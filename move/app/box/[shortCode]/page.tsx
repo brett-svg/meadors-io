@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { BoxLandingClient } from "@/components/box-landing-client";
 
 export default async function BoxByShortCodePage({ params }: { params: Promise<{ shortCode: string }> }) {
   await requireUser();
@@ -10,14 +10,8 @@ export default async function BoxByShortCodePage({ params }: { params: Promise<{
   if (!box) notFound();
 
   return (
-    <main className="card p-4 space-y-3">
-      <h1 className="text-2xl font-bold">{box.roomCode} • {box.shortCode}</h1>
-      <div>{box.room}{box.zone ? ` / ${box.zone}` : ""}</div>
-      <div>Status: {box.status}</div>
-      <ul className="list-disc ml-5">
-        {box.items.map((item) => <li key={item.id}>{item.name} x{item.qty}</li>)}
-      </ul>
-      <Link href={`/boxes/${box.id}`} className="btn inline-flex">Open full detail</Link>
+    <main className="max-w-lg mx-auto">
+      <BoxLandingClient box={box} />
     </main>
   );
 }
