@@ -161,6 +161,15 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
             <span className={`status-badge ${statusClass(box.status)}`} style={{ fontSize: "0.85rem", padding: "0.3rem 0.8rem" }}>
               {currentStatus?.icon} {currentStatus?.label}
             </span>
+            <a
+              href={`/api/exports/label/${box.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary text-sm"
+              style={{ padding: "0.4rem 0.85rem" }}
+            >
+              🏷️ Print Label
+            </a>
             <button
               className="btn text-xs text-slate-400"
               style={{ padding: "0.25rem 0.6rem" }}
