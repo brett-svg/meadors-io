@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db/prisma";
+import { Orientation } from "@prisma/client";
 
 // One-time setup route — creates Brett and Lynn accounts.
 // Protected by a static token so it can't be called by anyone without access to the env.
@@ -25,5 +26,18 @@ export async function POST(request: Request) {
     create: { username: "Lynn", passwordHash: lynnHash }
   });
 
-  return NextResponse.json({ ok: true, users: ["Brett", "Lynn"] });
+  // Ensure all label size presets exist (safe to run repeatedly)
+  const labelSizes = [
+    { id: "avery-5160", name: "Avery 5160", widthMm: 66.675, heightMm: 25.4, orientation: Orientation.landscape, marginTopMm: 2, marginRightMm: 2, marginBottomMm: 2, marginLeftMm: 2, safePaddingMm: 1, isPreset: true, isAvery5160Sheet: true },
+    { id: "generic-2x3-inch", name: "Generic 2x3 inch", widthMm: 76.2, heightMm: 50.8, orientation: Orientation.landscape, marginTopMm: 1, marginRightMm: 1, marginBottomMm: 1, marginLeftMm: 1, safePaddingMm: 1, isPreset: true },
+    { id: "supvan-50x30", name: "Supvan 50x30", widthMm: 50, heightMm: 30, orientation: Orientation.landscape, marginTopMm: 0.8, marginRightMm: 0.8, marginBottomMm: 0.8, marginLeftMm: 0.8, safePaddingMm: 1, isPreset: true },
+    { id: "supvan-50x40", name: "Supvan 50x40", widthMm: 50, heightMm: 40, orientation: Orientation.landscape, marginTopMm: 0.8, marginRightMm: 0.8, marginBottomMm: 0.8, marginLeftMm: 0.8, safePaddingMm: 1, isPreset: true },
+    { id: "flashlabel-40x30", name: "FlashLabel 40x30", widthMm: 40, heightMm: 30, orientation: Orientation.landscape, marginTopMm: 1, marginRightMm: 1, marginBottomMm: 1, marginLeftMm: 1, safePaddingMm: 1, isPreset: true },
+    { id: "4x6-inch-(inventory)", name: "4x6 inch (inventory)", widthMm: 152.4, heightMm: 101.6, orientation: Orientation.landscape, marginTopMm: 3, marginRightMm: 3, marginBottomMm: 3, marginLeftMm: 3, safePaddingMm: 2, isPreset: true },
+  ];
+  for (const size of labelSizes) {
+    await prisma.labelSize.upsert({ where: { id: size.id }, update: size, create: size });
+  }
+
+  return NextResponse.json({ ok: true, users: ["Brett", "Lynn"], labelSizes: labelSizes.map(s => s.id) });
 }

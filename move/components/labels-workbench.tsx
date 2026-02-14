@@ -43,7 +43,11 @@ export function LabelsWorkbench({ boxes }: { boxes: any[] }) {
       if (!res.ok) return;
       const data = await res.json();
       setSizes(data);
-      if (data[0]) setLabelSizeId(data[0].id);
+      const preferred = data.find((s: any) => s.id === "4x6-inch-(inventory)") ?? data[0];
+      if (preferred) {
+        setLabelSizeId(preferred.id);
+        if (preferred.id === "4x6-inch-(inventory)") setTemplate("inventory_4x6");
+      }
     });
   }, []);
 
