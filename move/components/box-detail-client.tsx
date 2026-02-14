@@ -3,17 +3,41 @@
 import { useMemo, useState } from "react";
 import { enqueueWrite, flushQueue } from "@/lib/pwa/queue";
 
+const STATUS_OPTIONS = [
+  { value: "draft",      label: "Draft",      icon: "✏️" },
+  { value: "packed",     label: "Packed",      icon: "📦" },
+  { value: "in_transit", label: "In Transit",  icon: "🚛" },
+  { value: "delivered",  label: "Delivered",   icon: "✅" },
+  { value: "unpacked",   label: "Unpacked",    icon: "🏠" }
+];
+
+function statusClass(s: string) {
+  const map: Record<string, string> = {
+    draft: "status-draft",
+    packed: "status-packed",
+    in_transit: "status-transit",
+    delivered: "status-delivered",
+    unpacked: "status-unpacked"
+  };
+  return map[s] ?? "status-draft";
+}
+
 export function BoxDetailClient({ initialBox }: { initialBox: any }) {
   const [box, setBox] = useState(initialBox);
   const [itemName, setItemName] = useState("");
   const [bulkInput, setBulkInput] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
 
   const qrUrl = useMemo(() => {
     if (typeof window === "undefined") return `/box/${box.shortCode}`;
     return `${window.location.origin}/box/${box.shortCode}`;
   }, [box.shortCode]);
 
+  const currentStatus = STATUS_OPTIONS.find((s) => s.value === box.status);
+
   async function patchBox(patch: Record<string, unknown>) {
+    setSaving(true);
     const payload = { ...box, ...patch };
     try {
       const res = await fetch(`/api/boxes/${box.id}`, {
@@ -29,6 +53,8 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
         method: "PATCH",
         body: JSON.stringify(payload)
       });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -65,6 +91,7 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
     if (res.ok) {
       setBox({ ...box, items: await res.json() });
       setBulkInput("");
+      setShowBulk(false);
     }
   }
 
@@ -100,56 +127,163 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
 
   return (
     <div className="space-y-4">
-      <section className="card p-4 grid md:grid-cols-2 gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">{box.roomCode}</h1>
-          <div className="text-slate-600">{box.shortCode}</div>
-          <div className="text-sm mt-2">{box.house} / {box.floor} / {box.room}{box.zone ? ` / ${box.zone}` : ""}</div>
-          <div className="mt-2 text-sm">QR URL: <code>{qrUrl}</code></div>
-        </div>
-        <div className="space-y-2">
-          <button className="btn" onClick={() => flushQueue()}>Sync queued offline writes</button>
-          <label className="text-sm">Status</label>
-          <select className="field" value={box.status} onChange={(e) => patchBox({ status: e.target.value })}>
-            <option value="draft">draft</option>
-            <option value="packed">packed</option>
-            <option value="in_transit">in_transit</option>
-            <option value="delivered">delivered</option>
-            <option value="unpacked">unpacked</option>
-          </select>
-          <div className="flex gap-2">
-            <button className="btn" onClick={() => patchBox({ status: "delivered" })}>Mark delivered</button>
-            <button className="btn" onClick={() => patchBox({ status: "unpacked" })}>Mark unpacked</button>
+      {/* Box header */}
+      <section className="card p-4">
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-2xl font-bold">{box.roomCode}</h1>
+              {box.fragile && <span className="fragile-badge">⚠️ Fragile</span>}
+            </div>
+            <div className="text-slate-500 text-sm">{box.shortCode}</div>
+            <div className="text-sm mt-1 text-slate-600">
+              {[box.house, box.floor, box.room, box.zone].filter(Boolean).join(" › ")}
+            </div>
+            <div className="mt-2 text-xs text-slate-400">
+              QR: <code className="bg-slate-100 px-1 rounded">{qrUrl}</code>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 items-end">
+            <span className={`status-badge ${statusClass(box.status)}`} style={{ fontSize: "0.85rem", padding: "0.3rem 0.8rem" }}>
+              {currentStatus?.icon} {currentStatus?.label}
+            </span>
+            <button
+              className="btn text-xs text-slate-400"
+              style={{ padding: "0.25rem 0.6rem" }}
+              onClick={() => flushQueue()}
+            >
+              ↑ Sync offline
+            </button>
           </div>
         </div>
       </section>
 
+      {/* Status update */}
       <section className="card p-4">
-        <h2 className="font-semibold">Inventory</h2>
-        <div className="flex gap-2 mt-2">
-          <input className="field" placeholder="Item name" value={itemName} onChange={(e) => setItemName(e.target.value)} />
-          <button className="btn" onClick={addItem}>Add</button>
-        </div>
-        <textarea className="field mt-2" rows={3} placeholder="Bulk add: plates x 8, usb cable (3), toothbrush" value={bulkInput} onChange={(e) => setBulkInput(e.target.value)} />
-        <button className="btn mt-2" onClick={addBulk}>Bulk add parser</button>
-        <div className="mt-3 space-y-2">
-          {box.items.map((item: any) => (
-            <div key={item.id} className="card p-2 flex items-center justify-between">
-              <div>{item.name} x{item.qty}</div>
-              <button className="btn" onClick={() => removeItem(item.id)}>Remove</button>
-            </div>
+        <h2 className="font-semibold mb-3">Update Status</h2>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {STATUS_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              className={`btn ${box.status === opt.value ? "btn-primary" : ""}`}
+              onClick={() => patchBox({ status: opt.value })}
+              disabled={saving}
+            >
+              {opt.icon} {opt.label}
+            </button>
           ))}
+        </div>
+        {/* Quick prominent actions */}
+        <div className="flex gap-2 flex-wrap">
+          {box.status !== "delivered" && (
+            <button
+              className="btn btn-success"
+              onClick={() => patchBox({ status: "delivered" })}
+              disabled={saving}
+            >
+              ✅ Mark as Delivered
+            </button>
+          )}
+          {box.status === "delivered" && (
+            <button
+              className="btn btn-primary"
+              onClick={() => patchBox({ status: "unpacked" })}
+              disabled={saving}
+            >
+              🏠 Mark as Unpacked
+            </button>
+          )}
         </div>
       </section>
 
+      {/* Inventory */}
       <section className="card p-4">
-        <h2 className="font-semibold">Photos</h2>
-        <input className="field mt-2" type="file" accept="image/*" onChange={(e) => uploadPhoto(e.target.files?.[0] || null)} />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
-          {box.photos.map((photo: any) => (
-            <img key={photo.id} src={photo.url} alt={photo.caption || "photo"} className="w-full h-28 object-cover rounded" />
-          ))}
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold">Items ({box.items.length})</h2>
+          <button
+            className="btn text-sm"
+            onClick={() => setShowBulk((v) => !v)}
+          >
+            {showBulk ? "Single item" : "Add multiple"}
+          </button>
         </div>
+
+        {showBulk ? (
+          <div className="space-y-2">
+            <div className="text-xs text-slate-500 mb-1">One item per line, e.g. <em>plates x 8</em> or <em>usb cable (3)</em></div>
+            <textarea
+              className="field"
+              rows={4}
+              placeholder={"plates x 8\nusb cable (3)\ntoothbrush"}
+              value={bulkInput}
+              onChange={(e) => setBulkInput(e.target.value)}
+              autoFocus
+            />
+            <button className="btn btn-primary" onClick={addBulk}>Add Items</button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              className="field"
+              placeholder="Item name (e.g. plates, charger)"
+              value={itemName}
+              onChange={(e) => setItemName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addItem(); }}
+              autoFocus
+            />
+            <button className="btn btn-primary" onClick={addItem}>Add</button>
+          </div>
+        )}
+
+        <div className="mt-3 space-y-1.5">
+          {box.items.length === 0 ? (
+            <div className="text-sm text-slate-400 text-center py-4">No items yet — add some above</div>
+          ) : (
+            box.items.map((item: any) => (
+              <div key={item.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{item.name}</span>
+                  {item.qty > 1 && (
+                    <span className="text-xs font-semibold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">×{item.qty}</span>
+                  )}
+                </div>
+                <button
+                  className="btn btn-danger text-xs"
+                  style={{ padding: "0.2rem 0.5rem" }}
+                  onClick={() => removeItem(item.id)}
+                >
+                  Remove
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* Photos */}
+      <section className="card p-4">
+        <h2 className="font-semibold mb-3">Photos</h2>
+        <label className="btn block text-center cursor-pointer" style={{ width: "auto", display: "inline-block" }}>
+          📷 Add Photo
+          <input
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(e) => uploadPhoto(e.target.files?.[0] || null)}
+          />
+        </label>
+        {box.photos.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+            {box.photos.map((photo: any) => (
+              <img
+                key={photo.id}
+                src={photo.url}
+                alt={photo.caption || "photo"}
+                className="w-full h-28 object-cover rounded-lg"
+              />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
