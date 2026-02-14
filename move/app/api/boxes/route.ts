@@ -1,23 +1,26 @@
 import { NextResponse } from "next/server";
-import { BoxCondition, BoxStatus, Priority } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireUserForApi } from "@/lib/auth/session";
 import { generateShortCode } from "@/lib/utils/short-code";
 import { suggestRoomCode } from "@/lib/auth/room-code";
 
-const VALID_PRIORITY: Record<string, Priority> = {
+type PriorityValue = "low" | "medium" | "high";
+type StatusValue = "draft" | "packed" | "in_transit" | "delivered" | "unpacked";
+type ConditionValue = "ok" | "damaged";
+
+const VALID_PRIORITY: Record<string, PriorityValue> = {
   low: "low",
   medium: "medium",
   high: "high"
 };
-const VALID_STATUS: Record<string, BoxStatus> = {
+const VALID_STATUS: Record<string, StatusValue> = {
   draft: "draft",
   packed: "packed",
   in_transit: "in_transit",
   delivered: "delivered",
   unpacked: "unpacked"
 };
-const VALID_CONDITION: Record<string, BoxCondition> = {
+const VALID_CONDITION: Record<string, ConditionValue> = {
   ok: "ok",
   damaged: "damaged"
 };
