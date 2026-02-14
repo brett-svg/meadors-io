@@ -1,8 +1,26 @@
 import { NextResponse } from "next/server";
+import { BoxCondition, BoxStatus, Priority } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireUserForApi } from "@/lib/auth/session";
 import { generateShortCode } from "@/lib/utils/short-code";
 import { suggestRoomCode } from "@/lib/auth/room-code";
+
+const VALID_PRIORITY: Record<string, Priority> = {
+  low: "low",
+  medium: "medium",
+  high: "high"
+};
+const VALID_STATUS: Record<string, BoxStatus> = {
+  draft: "draft",
+  packed: "packed",
+  in_transit: "in_transit",
+  delivered: "delivered",
+  unpacked: "unpacked"
+};
+const VALID_CONDITION: Record<string, BoxCondition> = {
+  ok: "ok",
+  damaged: "damaged"
+};
 
 export async function GET() {
   try {
@@ -17,10 +35,19 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     await requireUserForApi();
-    const body = await request.json();
+    const body: Record<string, unknown> = await request.json();
 
     const existingCodes = await prisma.box.findMany({ select: { roomCode: true } });
-    const roomCode = body.roomCode?.trim() || suggestRoomCode(body.room || "", existingCodes.map((x) => x.roomCode).filter((c): c is string => c != null));
+    const roomCodeList: string[] = [];
+    for (const row of existingCodes) {
+      if (typeof row.roomCode === "string") roomCodeList.push(row.roomCode);
+    }
+    const roomCodeInput = typeof body.roomCode === "string" ? body.roomCode.trim() : "";
+    const roomInput = typeof body.room === "string" ? body.room : "";
+    const roomCode = roomCodeInput || suggestRoomCode(roomInput, roomCodeList);
+    const priority = typeof body.priority === "string" ? VALID_PRIORITY[body.priority] ?? "medium" : "medium";
+    const status = typeof body.status === "string" ? VALID_STATUS[body.status] ?? "draft" : "draft";
+    const condition = typeof body.condition === "string" ? VALID_CONDITION[body.condition] ?? "ok" : "ok";
 
     let shortCode = await generateShortCode();
     for (let i = 0; i < 5; i += 1) {
@@ -28,21 +55,21 @@ export async function POST(request: Request) {
         const box = await prisma.box.create({
           data: {
             shortCode,
-            house: body.house || "House",
-            floor: body.floor || "Main",
-            room: body.room || "Room",
-            zone: body.zone || null,
+            house: typeof body.house === "string" && body.house ? body.house : "House",
+            floor: typeof body.floor === "string" && body.floor ? body.floor : "Main",
+            room: typeof body.room === "string" && body.room ? body.room : "Room",
+            zone: typeof body.zone === "string" && body.zone ? body.zone : null,
             roomCode,
-            category: body.category || null,
-            priority: body.priority || "medium",
+            category: typeof body.category === "string" && body.category ? body.category : null,
+            priority,
             fragile: Boolean(body.fragile),
-            status: body.status || "draft",
-            notes: body.notes || null,
-            condition: body.condition || "ok",
-            damageNotes: body.damageNotes || null,
+            status,
+            notes: typeof body.notes === "string" && body.notes ? body.notes : null,
+            condition,
+            damageNotes: typeof body.damageNotes === "string" && body.damageNotes ? body.damageNotes : null,
             estimatedValue: body.estimatedValue ? String(body.estimatedValue) : null,
-            storageArea: body.storageArea || null,
-            storageShelf: body.storageShelf || null
+            storageArea: typeof body.storageArea === "string" && body.storageArea ? body.storageArea : null,
+            storageShelf: typeof body.storageShelf === "string" && body.storageShelf ? body.storageShelf : null
           }
         });
         return NextResponse.json(box, { status: 201 });
