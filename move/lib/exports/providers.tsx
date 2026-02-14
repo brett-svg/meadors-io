@@ -73,20 +73,40 @@ export const pdf_provider = {
       const page = pdf.addPage([612, 792]);
       const colCount = 3;
       const rowCount = 10;
-      const labelWidth = 2.625 * 72;
-      const labelHeight = 1 * 72;
+      const labelWidth = 2.625 * 72;   // 189 pt
+      const labelHeight = 1 * 72;       // 72 pt
       const leftMargin = 0.1875 * 72;
       const topMargin = 0.5 * 72;
-      boxes.slice(0, 30).forEach((box, index) => {
+      const qrSize = 52; // pt — fits comfortably in 72pt height with padding
+
+      for (let index = 0; index < Math.min(boxes.length, 30); index++) {
+        const box = boxes[index];
         const row = Math.floor(index / colCount);
         const col = index % colCount;
-        if (row >= rowCount) return;
+        if (row >= rowCount) continue;
         const x = leftMargin + col * labelWidth;
         const y = 792 - topMargin - (row + 1) * labelHeight;
+
         page.drawRectangle({ x, y, width: labelWidth, height: labelHeight, borderColor: rgb(0.7, 0.7, 0.7), borderWidth: 0.5 });
-        page.drawText(box.roomCode, { x: x + 6, y: y + 36, size: 16, font });
-        page.drawText(box.shortCode, { x: x + 6, y: y + 18, size: 10, font: regularFont });
-      });
+
+        // Text block on the left
+        page.drawText(box.roomCode, { x: x + 5, y: y + labelHeight - 22, size: 15, font });
+        page.drawText(box.shortCode, { x: x + 5, y: y + labelHeight - 36, size: 8, font: regularFont });
+        if (box.room) {
+          page.drawText(String(box.room).slice(0, 20), { x: x + 5, y: y + labelHeight - 48, size: 7, font: regularFont, color: rgb(0.3, 0.3, 0.3) });
+        }
+        if (box.fragile) {
+          page.drawText("⚠ FRAGILE", { x: x + 5, y: y + 6, size: 7, font, color: rgb(0.8, 0.4, 0) });
+        }
+
+        // QR code on the right
+        const qrUrl = `${baseUrl}/box/${box.shortCode}`;
+        const qrData = await makeQrDataUrl(qrUrl);
+        const qr = await pdf.embedPng(qrData);
+        const qrX = x + labelWidth - qrSize - 5;
+        const qrY = y + (labelHeight - qrSize) / 2;
+        page.drawImage(qr, { x: qrX, y: qrY, width: qrSize, height: qrSize });
+      }
     } else {
       for (const box of boxes) {
         const { widthMm, heightMm } = effectiveSize(labelSize as any);
