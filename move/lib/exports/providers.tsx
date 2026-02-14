@@ -8,24 +8,20 @@ function mmToPt(mm: number) {
   return (mm * 72) / 25.4;
 }
 
-/** Adaptive font size for inventory lists based on item count */
-function inventoryFontPt(itemCount: number): number {
-  if (itemCount <= 8)  return 9;
-  if (itemCount <= 14) return 8;
-  if (itemCount <= 20) return 7;
-  return 6;
+/** Font size (pt) that fits all items in the available height */
+function inventoryFontPt(itemCount: number, availableHeightPt: number): number {
+  if (itemCount === 0) return 9;
+  const lineHeight = availableHeightPt / itemCount;
+  const fontSize = lineHeight / 1.45;
+  return Math.min(10, Math.max(4, fontSize));
 }
 
-/** Adaptive font size for PNG inventory (px at given DPI) */
-function inventoryFontPx(itemCount: number, dpi: number): number {
-  const pt = inventoryFontPt(itemCount);
-  return Math.round((pt / 72) * dpi);
-}
-
-/** Max items that fit at a given font size given available height in pt */
-function maxItemsFit(availableHeightPt: number, fontPt: number): number {
-  const lineHeight = fontPt * 1.4;
-  return Math.max(0, Math.floor(availableHeightPt / lineHeight));
+/** Font size (px) that fits all items in the available height */
+function inventoryFontPx(itemCount: number, availableHeightPx: number): number {
+  if (itemCount === 0) return 28;
+  const lineHeight = availableHeightPx / itemCount;
+  const fontSize = lineHeight / 1.45;
+  return Math.min(36, Math.max(14, fontSize));
 }
 
 type BoxForLabel = Pick<
@@ -64,18 +60,13 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
   const qrSize = headerH - pad * 2;               // QR fills header height minus padding
   const leftW = width - qrSize - pad * 3;         // text column width
 
-  // Item font: scale so ~10 items fill the zone comfortably
-  const itemZoneH = height - headerH - pad * 2;
-  const baseFontPx = Math.max(18, Math.min(36, Math.floor(itemZoneH / Math.max(itemCount + 1.5, 4))));
-  const itemFontPx = inventoryFontPx(itemCount, dpi);
-  const chosenFontPx = Math.max(itemFontPx, baseFontPx > 30 ? 30 : baseFontPx);
-
+  // Item font: fit ALL items in the available zone
+  const headerLabelH = Math.round(height * 0.04);
+  const itemZoneH = height - headerH - headerLabelH - pad * 3;
+  const chosenFontPx = Math.round(inventoryFontPx(itemCount, itemZoneH));
   const lineH = Math.round(chosenFontPx * 1.45);
-  const headerLabelH = Math.round(chosenFontPx * 0.9);
-  const itemAreaH = itemZoneH - headerLabelH - pad;
-  const maxItems = Math.max(0, Math.floor(itemAreaH / lineH));
-  const visibleItems = items.slice(0, maxItems);
-  const hiddenCount = itemCount - visibleItems.length;
+  const visibleItems = items;
+  const hiddenCount = 0;
 
   // Room code font: big, but never so big it crowds the header
   const roomFontPx = Math.min(Math.round(headerH * 0.52), Math.round(leftW * 0.55));
@@ -414,41 +405,29 @@ export const pdf_provider = {
             });
           }
 
-          // Contents zone — white background below header
+          // Contents zone — fit ALL items by adjusting font size
           const itemCount = items.length;
           const contentsY = headerY - pad;
-          const fontSize = inventoryFontPt(itemCount);
-          const lineH = fontSize * 1.5;
+          const labelFontSize = 7;
+          const itemStartY = contentsY - labelFontSize - 4;
+          const availHeight = itemStartY - pad;
+          const fontSize = inventoryFontPt(itemCount, availHeight);
+          const lineH = fontSize * 1.45;
 
           // "CONTENTS · N" label
-          const labelFontSize = Math.max(6, fontSize - 1);
           page.drawText(
             `CONTENTS${itemCount > 0 ? `  \u00B7  ${itemCount}` : ""}`,
             { x: pad, y: contentsY - labelFontSize, size: labelFontSize, font, color: rgb(0.39, 0.46, 0.55) }
           );
 
-          const itemStartY = contentsY - labelFontSize - lineH * 0.6;
-          const availHeight = itemStartY - pad;
-          const maxItems = maxItemsFit(availHeight, fontSize);
-          const visibleItems = items.slice(0, maxItems);
-          const hiddenCount = itemCount - visibleItems.length;
-
-          visibleItems.forEach((item, i) => {
+          items.forEach((item, i) => {
             const itemText = `  ${item.name}${item.qty > 1 ? `  x${item.qty}` : ""}`;
             page.drawText(itemText, {
               x: pad, y: itemStartY - i * lineH,
               size: fontSize, font: regularFont, color: rgb(0.06, 0.09, 0.15)
             });
-            // Dot bullet
-            page.drawCircle({ x: pad + 3, y: itemStartY - i * lineH + fontSize * 0.35, size: fontSize * 0.12, color: rgb(0.06, 0.09, 0.15) });
+            page.drawCircle({ x: pad + 3, y: itemStartY - i * lineH + fontSize * 0.35, size: Math.max(1, fontSize * 0.12), color: rgb(0.06, 0.09, 0.15) });
           });
-
-          if (hiddenCount > 0) {
-            page.drawText(`+ ${hiddenCount} more`, {
-              x: pad, y: itemStartY - visibleItems.length * lineH,
-              size: Math.max(6, fontSize - 1), font: regularFont, color: rgb(0.58, 0.64, 0.73)
-            });
-          }
         } else {
           // ── Standard layout ───────────────────────────────────────────────
           page.drawText(box.roomCode, { x: 8, y: pagePtH - 24, size: Math.min(layout.roomCodeFontPx * 0.6, 36), font });
