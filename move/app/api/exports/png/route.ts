@@ -1,3 +1,4 @@
+import { getBaseUrl } from "@/lib/utils/base-url";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireUserForApi } from "@/lib/auth/session";
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
     const labelSize = await prisma.labelSize.findUnique({ where: { id: body.labelSizeId } });
     if (!labelSize) return NextResponse.json({ error: "Label size not found" }, { status: 404 });
 
-    const baseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
+    const baseUrl = getBaseUrl(request);
     const ctx = {
       boxes: boxes as any,
       template: body.template || "standard_inventory",
