@@ -1,0 +1,27 @@
+# Dependencies
+node_modules
+
+# Next.js
+.next
+
+# Environment files (keep .env.example)
+.env
+.env.*
+!.env.example
+
+# Build and cache
+coverage
+.prisma
+
+# Uploads
+public/uploads
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo

@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BoxStatus {
+  draft
+  packed
+  in_transit
+  delivered
+  unpacked
+}
+
+enum BoxCondition {
+  ok
+  damaged
+}
+
+enum Priority {
+  low
+  medium
+  high
+}
+
+enum Orientation {
+  portrait
+  landscape
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model LabelSize {
+  id               String      @id @default(cuid())
+  name             String
+  widthMm          Float
+  heightMm         Float
+  orientation      Orientation @default(portrait)
+  marginTopMm      Float       @default(0)
+  marginRightMm    Float       @default(0)
+  marginBottomMm   Float       @default(0)
+  marginLeftMm     Float       @default(0)
+  safePaddingMm    Float       @default(0)
+  cornerRadiusMm   Float?
+  isPreset         Boolean     @default(false)
+  isAvery5160Sheet Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model Box {
+  id             String       @id @default(uuid())
+  shortCode      String       @unique
+  house          String
+  floor          String
+  room           String
+  zone           String?
+  roomCode       String
+  category       String?
+  priority       Priority     @default(medium)
+  fragile        Boolean      @default(false)
+  status         BoxStatus    @default(draft)
+  notes          String?
+  condition      BoxCondition @default(ok)
+  damageNotes    String?
+  estimatedValue Decimal?     @db.Decimal(10, 2)
+  storageArea    String?
+  storageShelf   String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  items          Item[]
+  photos         Photo[]
+}
+
+model Item {
+  id        String   @id @default(cuid())
+  boxId     String
+  box       Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  name      String
+  qty       Int      @default(1)
+  packed    Boolean  @default(false)
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Photo {
+  id        String   @id @default(cuid())
+  boxId     String
+  box       Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+}
+
+model Bundle {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  itemsJson Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  boxId     String?
+  action    String
+  details   Json?
+  createdAt DateTime @default(now())
+}
