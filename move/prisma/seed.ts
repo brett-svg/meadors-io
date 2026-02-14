@@ -4,11 +4,18 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  const passwordHash = await bcrypt.hash("move1234", 10);
+  const brettHash = await bcrypt.hash("8015", 10);
   await prisma.user.upsert({
-    where: { username: "admin" },
-    update: { passwordHash },
-    create: { username: "admin", passwordHash }
+    where: { username: "Brett" },
+    update: { passwordHash: brettHash },
+    create: { username: "Brett", passwordHash: brettHash }
+  });
+
+  const lynnHash = await bcrypt.hash("3104", 10);
+  await prisma.user.upsert({
+    where: { username: "Lynn" },
+    update: { passwordHash: lynnHash },
+    create: { username: "Lynn", passwordHash: lynnHash }
   });
 
   const labelSizes = [
