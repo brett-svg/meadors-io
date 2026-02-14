@@ -371,71 +371,82 @@ export const pdf_provider = {
         page.drawRectangle({ x: 1, y: 1, width: pagePtW - 2, height: pagePtH - 2, borderWidth: 1, borderColor: rgb(0, 0, 0) });
 
         if (isInventory) {
-          // ── Inventory 4×6 layout ──────────────────────────────────────────
-          const headerY = pagePtH - 20;
-          const roomFontSize = Math.min(Math.max(layout.roomCodeFontPx * 0.55, 18), 32);
-          const shortFontSize = Math.max(layout.shortCodeFontPx * 0.55, 9);
+          // ── Inventory 4×6 layout — dark header band ───────────────────────
+          const pad = 10;                            // pt inset from edges
+          const headerH = Math.round(pagePtH * 0.42); // ~42% for header band
+          const headerY = pagePtH - headerH;         // bottom of header band (pdf-lib Y=0 is bottom)
 
-          // Room code (top-left)
-          page.drawText(box.roomCode, { x: 8, y: headerY, size: roomFontSize, font });
-          page.drawText(box.shortCode, { x: 8, y: headerY - roomFontSize - 3, size: shortFontSize, font: regularFont });
+          // Dark navy header band
+          page.drawRectangle({
+            x: 0, y: headerY,
+            width: pagePtW, height: headerH,
+            color: rgb(0.059, 0.090, 0.165)          // #0f172a
+          });
 
-          // Room name + zone
+          // QR on white tile — right side of header
+          const qrInset = headerH - pad * 2;
+          const qrTileX = pagePtW - qrInset - pad;
+          const qrTileY = headerY + pad;
+          page.drawRectangle({ x: qrTileX - 4, y: qrTileY - 4, width: qrInset + 8, height: qrInset + 8, color: rgb(1, 1, 1) });
+          page.drawImage(qr, { x: qrTileX, y: qrTileY, width: qrInset, height: qrInset });
+
+          // Room code — large white text
+          const roomFontSize = Math.min(Math.round(headerH * 0.42), 36);
+          const shortFontSize = Math.round(roomFontSize * 0.28);
+          const roomNameFontSize = Math.round(roomFontSize * 0.20);
+
+          const textX = pad + 2;
+          const roomCodeY = headerY + headerH - pad - roomFontSize;
+          page.drawText(box.roomCode, { x: textX, y: roomCodeY, size: roomFontSize, font, color: rgb(1, 1, 1) });
+          page.drawText(box.shortCode, { x: textX, y: roomCodeY - shortFontSize - 4, size: shortFontSize, font, color: rgb(0.58, 0.64, 0.73) });
+
           const roomLabel = [box.room, box.zone].filter(Boolean).join(" · ");
           if (roomLabel) {
-            page.drawText(roomLabel, { x: 8, y: headerY - roomFontSize - 3 - shortFontSize - 4, size: 8, font: regularFont, color: rgb(0.4, 0.4, 0.4) });
+            page.drawText(roomLabel.slice(0, 30), {
+              x: textX, y: roomCodeY - shortFontSize - 4 - roomNameFontSize - 3,
+              size: roomNameFontSize, font: regularFont, color: rgb(0.39, 0.46, 0.55)
+            });
           }
-
-          // Fragile badge
           if (box.fragile) {
-            page.drawText("⚠ FRAGILE", { x: 8, y: 8, size: 8, font, color: rgb(0.8, 0.4, 0) });
+            page.drawText("FRAGILE", {
+              x: textX, y: headerY + pad,
+              size: roomNameFontSize, font, color: rgb(0.98, 0.75, 0.14)   // amber
+            });
           }
 
-          // QR code (top-right, vertically centred in header zone)
-          const headerZonePt = pagePtH * 0.4; // top 40% is header
-          const qrInset = Math.min(qrPt, headerZonePt - 8);
-          page.drawImage(qr, { x: pagePtW - qrInset - 8, y: pagePtH - qrInset - 8, width: qrInset, height: qrInset });
-
-          // Divider
-          const dividerY = pagePtH - headerZonePt;
-          page.drawLine({ start: { x: 4, y: dividerY }, end: { x: pagePtW - 4, y: dividerY }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
-
-          // Inventory section
+          // Contents zone — white background below header
           const itemCount = items.length;
+          const contentsY = headerY - pad;
           const fontSize = inventoryFontPt(itemCount);
-          const lineH = fontSize * 1.4;
-          const inventoryTop = dividerY - 4;
+          const lineH = fontSize * 1.5;
 
-          // "CONTENTS (N items)" header
+          // "CONTENTS · N" label
+          const labelFontSize = Math.max(6, fontSize - 1);
           page.drawText(
-            `CONTENTS${itemCount > 0 ? ` (${itemCount} item${itemCount !== 1 ? "s" : ""})` : ""}`,
-            { x: 8, y: inventoryTop - fontSize, size: Math.max(7, fontSize - 1), font, color: rgb(0.35, 0.35, 0.35) }
+            `CONTENTS${itemCount > 0 ? `  \u00B7  ${itemCount}` : ""}`,
+            { x: pad, y: contentsY - labelFontSize, size: labelFontSize, font, color: rgb(0.39, 0.46, 0.55) }
           );
 
-          const itemStartY = inventoryTop - fontSize - lineH;
-          const availHeight = itemStartY - (box.fragile ? 18 : 8);
+          const itemStartY = contentsY - labelFontSize - lineH * 0.6;
+          const availHeight = itemStartY - pad;
           const maxItems = maxItemsFit(availHeight, fontSize);
           const visibleItems = items.slice(0, maxItems);
           const hiddenCount = itemCount - visibleItems.length;
 
           visibleItems.forEach((item, i) => {
-            const itemText = `· ${item.name}${item.qty > 1 ? ` ×${item.qty}` : ""}`;
+            const itemText = `  ${item.name}${item.qty > 1 ? `  x${item.qty}` : ""}`;
             page.drawText(itemText, {
-              x: 8,
-              y: itemStartY - i * lineH,
-              size: fontSize,
-              font: regularFont,
-              color: rgb(0.1, 0.1, 0.1)
+              x: pad, y: itemStartY - i * lineH,
+              size: fontSize, font: regularFont, color: rgb(0.06, 0.09, 0.15)
             });
+            // Dot bullet
+            page.drawCircle({ x: pad + 3, y: itemStartY - i * lineH + fontSize * 0.35, size: fontSize * 0.12, color: rgb(0.06, 0.09, 0.15) });
           });
 
           if (hiddenCount > 0) {
-            page.drawText(`+ ${hiddenCount} more item${hiddenCount !== 1 ? "s" : ""}`, {
-              x: 8,
-              y: itemStartY - visibleItems.length * lineH,
-              size: Math.max(6, fontSize - 1),
-              font: regularFont,
-              color: rgb(0.55, 0.55, 0.55)
+            page.drawText(`+ ${hiddenCount} more`, {
+              x: pad, y: itemStartY - visibleItems.length * lineH,
+              size: Math.max(6, fontSize - 1), font: regularFont, color: rgb(0.58, 0.64, 0.73)
             });
           }
         } else {
