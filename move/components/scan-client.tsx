@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // @zxing/browser works on iOS Safari, Firefox, and Chrome.
 // BarcodeDetector is Chrome/Edge desktop only — not reliable for mobile.
 import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
+import { trackScanSuccess, trackStatusChange, trackItemAdd } from "@/lib/analytics/track";
 
 type ScannerState = "starting" | "running" | "blocked";
 
@@ -108,6 +109,7 @@ export function ScanClient() {
     if (!res.ok) return;
     const data: BoxData = await res.json();
     navigator.vibrate?.(80);
+    trackScanSuccess(data.id, value.startsWith("http") ? "qr" : "manual");
 
     // WOW: auto-advance in_transit → delivered with undo
     if (data.status === "in_transit") {
@@ -132,6 +134,7 @@ export function ScanClient() {
     navigator.vibrate?.([60, 40, 160]);
     setDeliveredCount((c) => c + 1);
     triggerFlash(`✅ ${scannedBox.roomCode} delivered`);
+    trackStatusChange(scannedBox.id, "in_transit", "delivered", "scan");
 
     // offer undo for 4 s
     const undoState: UndoState = { box: updated, previousStatus: "in_transit", label: scannedBox.roomCode };
@@ -154,6 +157,7 @@ export function ScanClient() {
     navigator.vibrate?.([60, 40, 160]);
     if (status === "delivered") setDeliveredCount((c) => c + 1);
     triggerFlash(`${STATUS_LABEL[status]} — ${box.roomCode}`);
+    trackStatusChange(box.id, prev, status, "scan");
 
     const undoState: UndoState = { box: updated, previousStatus: prev, label: box.roomCode };
     setUndo(undoState);
@@ -192,6 +196,7 @@ export function ScanClient() {
       const items = await res.json();
       setBox({ ...box, items });
       setQuickItem("");
+      trackItemAdd(box.id, "scan");
     }
     setItemSaving(false);
   }

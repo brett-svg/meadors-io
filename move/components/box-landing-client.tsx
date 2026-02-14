@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { trackStatusChange, trackItemAdd } from "@/lib/analytics/track";
 
 interface BoxLandingProps {
   box: {
@@ -51,6 +52,7 @@ export function BoxLandingClient({ box: initialBox }: BoxLandingProps) {
       const updated = await res.json();
       setBox(updated);
       navigator.vibrate?.([60, 40, 160]);
+      trackStatusChange(box.id, box.status, status, "landing");
       setDone(true);
     }
     setSaving(false);
@@ -68,6 +70,7 @@ export function BoxLandingClient({ box: initialBox }: BoxLandingProps) {
       const items = await res.json();
       setBox({ ...box, items });
       setQuickItem("");
+      trackItemAdd(box.id, "landing");
     }
     setAddingItem(false);
   }
