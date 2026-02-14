@@ -1,7 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { enqueueWrite, flushQueue } from "@/lib/pwa/queue";
+
+const LABEL_OPTIONS = [
+  { id: "4x6-inch-(inventory)", template: "inventory_4x6", label: "4×6 Inventory (default)" },
+  { id: "generic-2x3-inch",     template: "standard_inventory", label: "2×3 Standard" },
+  { id: "avery-5160",           template: "standard_inventory", label: "Avery 5160 Sheet" },
+];
+const DEFAULT_LABEL_KEY = "move:defaultLabelIdx";
 
 const STATUS_OPTIONS = [
   { value: "draft",      label: "Draft",      icon: "✏️" },
@@ -34,6 +41,48 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
   const [bulkInput, setBulkInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
+  const [showPrintMenu, setShowPrintMenu] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [defaultLabelIdx, setDefaultLabelIdx] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    return Number(localStorage.getItem(DEFAULT_LABEL_KEY) ?? 0);
+  });
+  const printMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (printMenuRef.current && !printMenuRef.current.contains(e.target as Node)) {
+        setShowPrintMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function labelUrl(idx: number) {
+    const opt = LABEL_OPTIONS[idx];
+    return `/api/exports/label/${box.id}?template=${opt.template}&labelSizeId=${opt.id}`;
+  }
+
+  function openPreview(idx: number) {
+    const opt = LABEL_OPTIONS[idx];
+    // PNG at low DPI for fast preview (GET endpoint)
+    setPreviewUrl(`/api/exports/png?boxId=${box.id}&template=${opt.template}&labelSizeId=${opt.id}&dpi=96`);
+    setShowPrintMenu(false);
+  }
+
+  function printUrl(previewPngUrl: string) {
+    // Derive the PDF print URL from the preview PNG URL params
+    const u = new URL(previewPngUrl, "http://x");
+    const template = u.searchParams.get("template") ?? "inventory_4x6";
+    const labelSizeId = u.searchParams.get("labelSizeId") ?? "4x6-inch-(inventory)";
+    return `/api/exports/label/${box.id}?template=${template}&labelSizeId=${labelSizeId}`;
+  }
+
+  function setDefault(idx: number) {
+    setDefaultLabelIdx(idx);
+    localStorage.setItem(DEFAULT_LABEL_KEY, String(idx));
+  }
 
   const qrUrl = useMemo(() => {
     if (typeof window === "undefined") return `/box/${box.shortCode}`;
@@ -161,24 +210,53 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
             <span className={`status-badge ${statusClass(box.status)}`} style={{ fontSize: "0.85rem", padding: "0.3rem 0.8rem" }}>
               {currentStatus?.icon} {currentStatus?.label}
             </span>
-            <a
-              href={`/api/exports/label/${box.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary text-sm"
-              style={{ padding: "0.4rem 0.85rem" }}
-            >
-              🏷️ Print Label
-            </a>
-            <a
-              href={`/api/exports/label/${box.id}?template=inventory_4x6&labelSizeId=4x6-inch-(inventory)`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn text-sm"
-              style={{ padding: "0.4rem 0.85rem" }}
-            >
-              📋 4×6 Inventory
-            </a>
+            {/* Print button + dropdown */}
+            <div className="relative" ref={printMenuRef}>
+              <div className="flex">
+                <a
+                  href={labelUrl(defaultLabelIdx)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary text-sm"
+                  style={{ padding: "0.4rem 0.85rem", borderRadius: "0.4rem 0 0 0.4rem", borderRight: "1px solid rgba(255,255,255,0.25)" }}
+                >
+                  🏷️ Print Label
+                </a>
+                <button
+                  className="btn btn-primary text-sm"
+                  style={{ padding: "0.4rem 0.6rem", borderRadius: "0 0.4rem 0.4rem 0" }}
+                  onClick={() => setShowPrintMenu(v => !v)}
+                  aria-label="Label options"
+                >
+                  ▾
+                </button>
+              </div>
+              {showPrintMenu && (
+                <div className="absolute right-0 mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                  <div className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide border-b border-slate-100">
+                    Label Size
+                  </div>
+                  {LABEL_OPTIONS.map((opt, idx) => (
+                    <div key={opt.id} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50">
+                      <button
+                        className="flex-1 text-left text-sm text-slate-700"
+                        onClick={() => { openPreview(idx); }}
+                      >
+                        {idx === defaultLabelIdx && <span className="text-sky-500 mr-1">✓</span>}
+                        {opt.label}
+                      </button>
+                      <button
+                        className="text-xs text-slate-400 hover:text-sky-600"
+                        title="Set as default"
+                        onClick={() => setDefault(idx)}
+                      >
+                        {idx === defaultLabelIdx ? "default" : "set default"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               className="btn text-xs text-slate-400"
               style={{ padding: "0.25rem 0.6rem" }}
@@ -291,6 +369,42 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
           )}
         </div>
       </section>
+
+      {/* Label preview modal */}
+      {previewUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setPreviewUrl(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-4 flex flex-col gap-3"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-slate-800">Label Preview</h2>
+              <button className="text-slate-400 hover:text-slate-600 text-xl leading-none" onClick={() => setPreviewUrl(null)}>✕</button>
+            </div>
+            <img
+              src={previewUrl}
+              alt="Label preview"
+              className="w-full rounded-lg border border-slate-200"
+              style={{ imageRendering: "crisp-edges" }}
+            />
+            <div className="flex gap-2 justify-end">
+              <button className="btn" onClick={() => setPreviewUrl(null)}>Cancel</button>
+              <a
+                href={printUrl(previewUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary"
+                onClick={() => setPreviewUrl(null)}
+              >
+                🖨️ Print PDF
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Photos */}
       <section className="card p-4">
