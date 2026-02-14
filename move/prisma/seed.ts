@@ -72,6 +72,20 @@ async function main() {
       marginLeftMm: 1,
       safePaddingMm: 1,
       isPreset: true
+    },
+    {
+      // 4x6 inch — standard shipping/moving label. Use with inventory_4x6 template
+      // to print room code, QR code, and full box contents on one label.
+      name: "4x6 inch (inventory)",
+      widthMm: 152.4,
+      heightMm: 101.6,
+      orientation: "landscape",
+      marginTopMm: 3,
+      marginRightMm: 3,
+      marginBottomMm: 3,
+      marginLeftMm: 3,
+      safePaddingMm: 2,
+      isPreset: true
     }
   ] as const;
 

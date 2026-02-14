@@ -8,10 +8,32 @@ function mmToPt(mm: number) {
   return (mm * 72) / 25.4;
 }
 
+/** Adaptive font size for inventory lists based on item count */
+function inventoryFontPt(itemCount: number): number {
+  if (itemCount <= 8)  return 9;
+  if (itemCount <= 14) return 8;
+  if (itemCount <= 20) return 7;
+  return 6;
+}
+
+/** Adaptive font size for PNG inventory (px at given DPI) */
+function inventoryFontPx(itemCount: number, dpi: number): number {
+  const pt = inventoryFontPt(itemCount);
+  return Math.round((pt / 72) * dpi);
+}
+
+/** Max items that fit at a given font size given available height in pt */
+function maxItemsFit(availableHeightPt: number, fontPt: number): number {
+  const lineHeight = fontPt * 1.4;
+  return Math.max(0, Math.floor(availableHeightPt / lineHeight));
+}
+
 type BoxForLabel = Pick<
   Box,
   "id" | "shortCode" | "roomCode" | "room" | "zone" | "priority" | "fragile" | "notes"
->;
+> & {
+  items?: Array<{ name: string; qty: number }>;
+};
 
 type ExportCtx = {
   boxes: BoxForLabel[];
@@ -30,6 +52,18 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
 
   const width = mmToPx(widthMm, dpi);
   const height = mmToPx(heightMm, dpi);
+  const qrPx = mmToPx(layout.qrSizeMm, dpi);
+
+  const isInventory = template === "inventory_4x6";
+  const items = box.items ?? [];
+  const itemCount = items.length;
+  const itemFontPx = inventoryFontPx(itemCount, dpi);
+  // How many items fit in the space below the header
+  const headerHeightPx = mmToPx(35, dpi); // rough header + short code height
+  const availPx = height - headerHeightPx - 20;
+  const maxItems = Math.max(0, Math.floor(availPx / (itemFontPx * 1.4)));
+  const visibleItems = items.slice(0, maxItems);
+  const hiddenCount = itemCount - visibleItems.length;
 
   const image = new ImageResponse(
     (
@@ -38,23 +72,79 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
           width: "100%",
           height: "100%",
           display: "flex",
+          flexDirection: isInventory ? "column" : "row",
           border: "2px solid #0f172a",
           boxSizing: "border-box",
           padding: "14px",
           fontFamily: "Arial",
-          justifyContent: "space-between"
+          justifyContent: isInventory ? "flex-start" : "space-between",
+          gap: isInventory ? "0" : "8px"
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", maxWidth: "62%" }}>
-          <div style={{ fontSize: layout.roomCodeFontPx, fontWeight: 900 }}>{box.roomCode}</div>
-          <div style={{ fontSize: layout.shortCodeFontPx, fontWeight: 700, marginTop: "6px" }}>{box.shortCode}</div>
-          {layout.optionalLines.slice(0, 4).map((line, idx) => (
-            <div key={`${box.id}-${idx}`} style={{ fontSize: 12, marginTop: "4px" }}>
-              {line}
+        {/* Header row: room code + QR */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            width: "100%",
+            flexShrink: 0
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ fontSize: isInventory ? Math.min(layout.roomCodeFontPx, 52) : layout.roomCodeFontPx, fontWeight: 900, lineHeight: 1.05 }}>
+              {box.roomCode}
             </div>
-          ))}
+            <div style={{ fontSize: Math.max(10, layout.shortCodeFontPx), fontWeight: 700, color: "#374151", marginTop: "4px" }}>
+              {box.shortCode}
+            </div>
+            {!isInventory && layout.optionalLines.slice(0, 3).map((line, idx) => (
+              <div key={`${box.id}-opt-${idx}`} style={{ fontSize: 12, marginTop: "3px", color: "#6b7280" }}>
+                {line}
+              </div>
+            ))}
+            {isInventory && box.room && (
+              <div style={{ fontSize: 12, color: "#6b7280", marginTop: "3px" }}>{box.room}{box.zone ? ` · ${box.zone}` : ""}</div>
+            )}
+            {isInventory && box.fragile && (
+              <div style={{ fontSize: 11, color: "#b45309", fontWeight: 700, marginTop: "2px" }}>⚠ FRAGILE</div>
+            )}
+          </div>
+          <img src={qrData} alt="qr" style={{ width: qrPx, height: qrPx, flexShrink: 0 }} />
         </div>
-        <img src={qrData} alt="qr" style={{ width: mmToPx(layout.qrSizeMm, dpi), height: mmToPx(layout.qrSizeMm, dpi) }} />
+
+        {/* Inventory section */}
+        {isInventory && itemCount > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              borderTop: "1.5px solid #e2e8f0",
+              marginTop: "6px",
+              paddingTop: "5px",
+              width: "100%",
+              flexShrink: 0
+            }}
+          >
+            <div style={{ fontSize: Math.max(9, itemFontPx * 0.85), fontWeight: 700, color: "#374151", marginBottom: "3px" }}>
+              CONTENTS ({itemCount} item{itemCount !== 1 ? "s" : ""})
+            </div>
+            {visibleItems.map((item, idx) => (
+              <div key={`${box.id}-item-${idx}`} style={{ display: "flex", alignItems: "baseline", gap: "5px", fontSize: itemFontPx, color: "#111827", lineHeight: 1.35 }}>
+                <span style={{ color: "#9ca3af", fontSize: itemFontPx * 0.85 }}>·</span>
+                <span>{item.name}{item.qty > 1 ? ` ×${item.qty}` : ""}</span>
+              </div>
+            ))}
+            {hiddenCount > 0 && (
+              <div style={{ fontSize: Math.max(8, itemFontPx * 0.9), color: "#9ca3af", marginTop: "2px" }}>
+                + {hiddenCount} more item{hiddenCount !== 1 ? "s" : ""}
+              </div>
+            )}
+          </div>
+        )}
+        {isInventory && itemCount === 0 && (
+          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: "6px" }}>No items listed</div>
+        )}
       </div>
     ),
     { width, height }
@@ -110,20 +200,98 @@ export const pdf_provider = {
     } else {
       for (const box of boxes) {
         const { widthMm, heightMm } = effectiveSize(labelSize as any);
-        const page = pdf.addPage([mmToPt(widthMm), mmToPt(heightMm)]);
+        const pagePtW = mmToPt(widthMm);
+        const pagePtH = mmToPt(heightMm);
+        const page = pdf.addPage([pagePtW, pagePtH]);
         const qrUrl = `${baseUrl}/box/${box.shortCode}`;
         const layout = computeLabelLayout(labelSize as any, { ...box, qrUrl }, template);
         const qrData = await makeQrDataUrl(qrUrl);
         const qr = await pdf.embedPng(qrData);
         const qrPt = mmToPt(layout.qrSizeMm);
 
-        page.drawRectangle({ x: 1, y: 1, width: mmToPt(widthMm) - 2, height: mmToPt(heightMm) - 2, borderWidth: 1, borderColor: rgb(0, 0, 0) });
-        page.drawText(box.roomCode, { x: 8, y: mmToPt(heightMm) - 24, size: Math.min(layout.roomCodeFontPx * 0.6, 36), font });
-        page.drawText(box.shortCode, { x: 8, y: mmToPt(heightMm) - 42, size: Math.max(layout.shortCodeFontPx * 0.6, 10), font: regularFont });
-        layout.optionalLines.slice(0, 4).forEach((line, i) => {
-          page.drawText(line, { x: 8, y: mmToPt(heightMm) - 56 - i * 11, size: 9, font: regularFont });
-        });
-        page.drawImage(qr, { x: mmToPt(widthMm) - qrPt - 6, y: 6, width: qrPt, height: qrPt });
+        const isInventory = template === "inventory_4x6";
+        const items = box.items ?? [];
+
+        // Border
+        page.drawRectangle({ x: 1, y: 1, width: pagePtW - 2, height: pagePtH - 2, borderWidth: 1, borderColor: rgb(0, 0, 0) });
+
+        if (isInventory) {
+          // ── Inventory 4×6 layout ──────────────────────────────────────────
+          const headerY = pagePtH - 20;
+          const roomFontSize = Math.min(Math.max(layout.roomCodeFontPx * 0.55, 18), 32);
+          const shortFontSize = Math.max(layout.shortCodeFontPx * 0.55, 9);
+
+          // Room code (top-left)
+          page.drawText(box.roomCode, { x: 8, y: headerY, size: roomFontSize, font });
+          page.drawText(box.shortCode, { x: 8, y: headerY - roomFontSize - 3, size: shortFontSize, font: regularFont });
+
+          // Room name + zone
+          const roomLabel = [box.room, box.zone].filter(Boolean).join(" · ");
+          if (roomLabel) {
+            page.drawText(roomLabel, { x: 8, y: headerY - roomFontSize - 3 - shortFontSize - 4, size: 8, font: regularFont, color: rgb(0.4, 0.4, 0.4) });
+          }
+
+          // Fragile badge
+          if (box.fragile) {
+            page.drawText("⚠ FRAGILE", { x: 8, y: 8, size: 8, font, color: rgb(0.8, 0.4, 0) });
+          }
+
+          // QR code (top-right, vertically centred in header zone)
+          const headerZonePt = pagePtH * 0.4; // top 40% is header
+          const qrInset = Math.min(qrPt, headerZonePt - 8);
+          page.drawImage(qr, { x: pagePtW - qrInset - 8, y: pagePtH - qrInset - 8, width: qrInset, height: qrInset });
+
+          // Divider
+          const dividerY = pagePtH - headerZonePt;
+          page.drawLine({ start: { x: 4, y: dividerY }, end: { x: pagePtW - 4, y: dividerY }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
+
+          // Inventory section
+          const itemCount = items.length;
+          const fontSize = inventoryFontPt(itemCount);
+          const lineH = fontSize * 1.4;
+          const inventoryTop = dividerY - 4;
+
+          // "CONTENTS (N items)" header
+          page.drawText(
+            `CONTENTS${itemCount > 0 ? ` (${itemCount} item${itemCount !== 1 ? "s" : ""})` : ""}`,
+            { x: 8, y: inventoryTop - fontSize, size: Math.max(7, fontSize - 1), font, color: rgb(0.35, 0.35, 0.35) }
+          );
+
+          const itemStartY = inventoryTop - fontSize - lineH;
+          const availHeight = itemStartY - (box.fragile ? 18 : 8);
+          const maxItems = maxItemsFit(availHeight, fontSize);
+          const visibleItems = items.slice(0, maxItems);
+          const hiddenCount = itemCount - visibleItems.length;
+
+          visibleItems.forEach((item, i) => {
+            const itemText = `· ${item.name}${item.qty > 1 ? ` ×${item.qty}` : ""}`;
+            page.drawText(itemText, {
+              x: 8,
+              y: itemStartY - i * lineH,
+              size: fontSize,
+              font: regularFont,
+              color: rgb(0.1, 0.1, 0.1)
+            });
+          });
+
+          if (hiddenCount > 0) {
+            page.drawText(`+ ${hiddenCount} more item${hiddenCount !== 1 ? "s" : ""}`, {
+              x: 8,
+              y: itemStartY - visibleItems.length * lineH,
+              size: Math.max(6, fontSize - 1),
+              font: regularFont,
+              color: rgb(0.55, 0.55, 0.55)
+            });
+          }
+        } else {
+          // ── Standard layout ───────────────────────────────────────────────
+          page.drawText(box.roomCode, { x: 8, y: pagePtH - 24, size: Math.min(layout.roomCodeFontPx * 0.6, 36), font });
+          page.drawText(box.shortCode, { x: 8, y: pagePtH - 42, size: Math.max(layout.shortCodeFontPx * 0.6, 10), font: regularFont });
+          layout.optionalLines.slice(0, 4).forEach((line, i) => {
+            page.drawText(line, { x: 8, y: pagePtH - 56 - i * 11, size: 9, font: regularFont });
+          });
+          page.drawImage(qr, { x: pagePtW - qrPt - 6, y: 6, width: qrPt, height: qrPt });
+        }
       }
     }
 

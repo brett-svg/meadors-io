@@ -24,7 +24,7 @@ export async function GET(
     const templateParam = url.searchParams.get("template") ?? "standard_inventory";
     const labelSizeIdParam = url.searchParams.get("labelSizeId");
 
-    const box = await prisma.box.findUnique({ where: { id } });
+    const box = await prisma.box.findUnique({ where: { id }, include: { items: true } });
     if (!box) return NextResponse.json({ error: "Box not found" }, { status: 404 });
 
     // Pick label size: explicit param → first non-Avery preset → any preset

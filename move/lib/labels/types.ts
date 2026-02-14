@@ -5,7 +5,8 @@ export type LabelTemplateKey =
   | "destination_only"
   | "fragile"
   | "open_first"
-  | "storage";
+  | "storage"
+  | "inventory_4x6";
 
 export type LabelSizeInput = {
   id?: string;

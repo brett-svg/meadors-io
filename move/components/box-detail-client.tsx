@@ -170,6 +170,15 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
             >
               🏷️ Print Label
             </a>
+            <a
+              href={`/api/exports/label/${box.id}?template=inventory_4x6&labelSizeId=4x6-inch-(inventory)`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn text-sm"
+              style={{ padding: "0.4rem 0.85rem" }}
+            >
+              📋 4×6 Inventory
+            </a>
             <button
               className="btn text-xs text-slate-400"
               style={{ padding: "0.25rem 0.6rem" }}

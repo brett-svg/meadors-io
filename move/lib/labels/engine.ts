@@ -6,7 +6,8 @@ export const TEMPLATE_LABELS: Record<LabelTemplateKey, string> = {
   destination_only: "Destination-only",
   fragile: "FRAGILE",
   open_first: "OPEN FIRST",
-  storage: "Storage"
+  storage: "Storage",
+  inventory_4x6: "4×6 with full inventory list"
 };
 
 const MIN_QR_MM = 18;

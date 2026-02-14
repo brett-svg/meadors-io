@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   try {
     await requireUserForApi();
     const body = await request.json();
-    const boxes = await prisma.box.findMany({ where: { id: { in: body.boxIds || [] } } });
+    const boxes = await prisma.box.findMany({ where: { id: { in: body.boxIds || [] } }, include: { items: true } });
     const labelSize = await prisma.labelSize.findUnique({ where: { id: body.labelSizeId } });
     if (!labelSize) return NextResponse.json({ error: "Label size not found" }, { status: 404 });
 
