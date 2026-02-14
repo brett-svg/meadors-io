@@ -212,19 +212,19 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
             </span>
             {/* Print button + dropdown */}
             <div className="relative" ref={printMenuRef}>
-              <div className="flex">
+              <div style={{ display: "flex", borderRadius: "0.5rem", overflow: "hidden" }}>
                 <a
                   href={labelUrl(defaultLabelIdx)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn btn-primary text-sm"
-                  style={{ padding: "0.4rem 0.85rem", borderRadius: "0.4rem 0 0 0.4rem", borderRight: "1px solid rgba(255,255,255,0.25)" }}
+                  style={{ padding: "0.45rem 0.9rem", borderRadius: 0, borderRight: "1px solid rgba(255,255,255,0.2)", flex: 1, whiteSpace: "nowrap" }}
                 >
                   🏷️ Print Label
                 </a>
                 <button
                   className="btn btn-primary text-sm"
-                  style={{ padding: "0.4rem 0.6rem", borderRadius: "0 0.4rem 0.4rem 0" }}
+                  style={{ padding: "0.45rem 0.65rem", borderRadius: 0, minWidth: 0 }}
                   onClick={() => setShowPrintMenu(v => !v)}
                   aria-label="Label options"
                 >

@@ -60,13 +60,15 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
   const qrSize = headerH - pad * 2;               // QR fills header height minus padding
   const leftW = width - qrSize - pad * 3;         // text column width
 
-  // Item font: fit ALL items in the available zone
+  // Item font: fit ALL items, use two columns if single-col font gets too small
   const headerLabelH = Math.round(height * 0.04);
   const itemZoneH = height - headerH - headerLabelH - pad * 3;
-  const chosenFontPx = Math.round(inventoryFontPx(itemCount, itemZoneH));
+  const singleColFontPx = inventoryFontPx(itemCount, itemZoneH);
+  const useTwo = singleColFontPx < 16 && itemCount > 4;
+  const cols = useTwo ? 2 : 1;
+  const itemsPerCol = Math.ceil(itemCount / cols);
+  const chosenFontPx = Math.round(inventoryFontPx(itemsPerCol, itemZoneH));
   const lineH = Math.round(chosenFontPx * 1.45);
-  const visibleItems = items;
-  const hiddenCount = 0;
 
   // Room code font: big, but never so big it crowds the header
   const roomFontPx = Math.min(Math.round(headerH * 0.52), Math.round(leftW * 0.55));
@@ -205,64 +207,45 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
             Contents{itemCount > 0 ? ` · ${itemCount}` : ""}
           </div>
 
-          {/* Item rows */}
-          {visibleItems.map((item, idx) => (
-            <div
-              key={`${box.id}-item-${idx}`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: Math.round(chosenFontPx * 0.4),
-                height: lineH,
-                overflow: "hidden"
-              }}
-            >
-              <div
-                style={{
-                  width: Math.round(chosenFontPx * 0.18),
-                  height: Math.round(chosenFontPx * 0.18),
-                  background: "#0f172a",
-                  borderRadius: "50%",
-                  flexShrink: 0,
-                  marginTop: 2
-                }}
-              />
-              <div
-                style={{
-                  fontSize: chosenFontPx,
-                  color: "#0f172a",
-                  fontFamily: "Arial, sans-serif",
-                  fontWeight: 400,
-                  lineHeight: 1,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden"
-                }}
-              >
-                {item.name}{item.qty > 1 ? (
-                  <span style={{ color: "#64748b", fontSize: Math.round(chosenFontPx * 0.8) }}> ×{item.qty}</span>
-                ) : null}
+          {/* Item grid — one or two columns */}
+          <div style={{ display: "flex", flexDirection: "row", gap: pad, flex: 1, overflow: "hidden" }}>
+            {Array.from({ length: cols }).map((_, col) => (
+              <div key={col} style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+                {items.slice(col * itemsPerCol, (col + 1) * itemsPerCol).map((item, idx) => (
+                  <div
+                    key={`${box.id}-c${col}-${idx}`}
+                    style={{ display: "flex", alignItems: "center", gap: Math.round(chosenFontPx * 0.35), height: lineH, overflow: "hidden" }}
+                  >
+                    <div style={{
+                      width: Math.max(4, Math.round(chosenFontPx * 0.15)),
+                      height: Math.max(4, Math.round(chosenFontPx * 0.15)),
+                      minWidth: Math.max(4, Math.round(chosenFontPx * 0.15)),
+                      background: "#0f172a",
+                      borderRadius: "50%",
+                      flexShrink: 0
+                    }} />
+                    <div style={{
+                      fontSize: chosenFontPx,
+                      color: "#0f172a",
+                      fontFamily: "Arial, sans-serif",
+                      fontWeight: 400,
+                      lineHeight: 1,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }}>
+                      {item.name}{item.qty > 1
+                        ? <span style={{ color: "#64748b", fontSize: Math.round(chosenFontPx * 0.8) }}> ×{item.qty}</span>
+                        : null}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
-
-          {hiddenCount > 0 && (
-            <div
-              style={{
-                fontSize: Math.round(chosenFontPx * 0.8),
-                color: "#94a3b8",
-                fontFamily: "Arial, sans-serif",
-                marginTop: Math.round(pad * 0.3)
-              }}
-            >
-              + {hiddenCount} more
-            </div>
-          )}
-
-          {itemCount === 0 && (
-            <div style={{ fontSize: chosenFontPx, color: "#94a3b8", fontFamily: "Arial, sans-serif" }}>
-              No items listed
-            </div>
-          )}
+            ))}
+            {itemCount === 0 && (
+              <div style={{ fontSize: chosenFontPx, color: "#94a3b8", fontFamily: "Arial, sans-serif" }}>No items listed</div>
+            )}
+          </div>
         </div>
       </div>
   );
@@ -405,14 +388,12 @@ export const pdf_provider = {
             });
           }
 
-          // Contents zone — fit ALL items by adjusting font size
+          // Contents zone — two-column layout if needed
           const itemCount = items.length;
           const contentsY = headerY - pad;
           const labelFontSize = 7;
-          const itemStartY = contentsY - labelFontSize - 4;
+          const itemStartY = contentsY - labelFontSize - 5;
           const availHeight = itemStartY - pad;
-          const fontSize = inventoryFontPt(itemCount, availHeight);
-          const lineH = fontSize * 1.45;
 
           // "CONTENTS · N" label
           page.drawText(
@@ -420,13 +401,29 @@ export const pdf_provider = {
             { x: pad, y: contentsY - labelFontSize, size: labelFontSize, font, color: rgb(0.39, 0.46, 0.55) }
           );
 
+          // Determine columns: fit single column first, overflow to two
+          const singleColFontSize = inventoryFontPt(itemCount, availHeight);
+          const useTwo = singleColFontSize < 5.5 && itemCount > 4;
+          const cols = useTwo ? 2 : 1;
+          const itemsPerCol = Math.ceil(itemCount / cols);
+          const colFontSize = inventoryFontPt(itemsPerCol, availHeight);
+          const lineH = colFontSize * 1.45;
+          const colWidth = (pagePtW - pad * 2) / cols;
+          const bulletR = Math.max(0.8, colFontSize * 0.1);
+          const indent = bulletR * 3 + 3;
+
           items.forEach((item, i) => {
-            const itemText = `  ${item.name}${item.qty > 1 ? `  x${item.qty}` : ""}`;
+            const col = Math.floor(i / itemsPerCol);
+            const row = i % itemsPerCol;
+            const x = pad + col * colWidth;
+            const y = itemStartY - row * lineH;
+            page.drawCircle({ x: x + bulletR + 1, y: y + colFontSize * 0.3, size: bulletR, color: rgb(0.06, 0.09, 0.15) });
+            const itemText = `${item.name}${item.qty > 1 ? ` x${item.qty}` : ""}`;
             page.drawText(itemText, {
-              x: pad, y: itemStartY - i * lineH,
-              size: fontSize, font: regularFont, color: rgb(0.06, 0.09, 0.15)
+              x: x + indent, y,
+              size: colFontSize, font: regularFont, color: rgb(0.06, 0.09, 0.15),
+              maxWidth: colWidth - indent - 4
             });
-            page.drawCircle({ x: pad + 3, y: itemStartY - i * lineH + fontSize * 0.35, size: Math.max(1, fontSize * 0.12), color: rgb(0.06, 0.09, 0.15) });
           });
         } else {
           // ── Standard layout ───────────────────────────────────────────────
