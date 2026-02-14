@@ -2,61 +2,27 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { trackBoxCreate } from "@/lib/analytics/track";
-
-const ROOM_MAP: Record<string, string> = {
-  kitchen: "KIT",
-  "primary bedroom": "PB",
-  bedroom: "BR",
-  "guest bedroom": "GB",
-  bathroom: "BA",
-  "living room": "LR",
-  "dining room": "DR",
-  office: "OFC",
-  garage: "GAR",
-  laundry: "LND",
-  basement: "BSMT",
-  attic: "ATC",
-  closet: "CL",
-  pantry: "PAN",
-  hallway: "HALL",
-  entryway: "ENT",
-  playroom: "PLAY",
-  storage: "STOR",
-  patio: "PAT",
-  balcony: "BAL",
-  shed: "SHED"
-};
+import { trackBoxCreate, trackQuickCreateTap } from "@/lib/analytics/track";
+import { suggestRoomCode } from "@/lib/auth/room-code";
+import { buildQuickBoxPayload } from "@/lib/utils/quick-box";
 
 const COMMON_ROOMS = ["Kitchen", "Living Room", "Bedroom", "Bathroom", "Office", "Garage", "Dining Room", "Guest Bedroom"];
-
-function suggest(room: string) {
-  const key = room.trim().toLowerCase();
-  if (ROOM_MAP[key]) return ROOM_MAP[key];
-  const words = room.trim().split(/\s+/).filter(Boolean);
-  if (words.length > 1) return words.map((w) => w[0].toUpperCase()).join("").slice(0, 5);
-  return (words[0] || "ROOM").slice(0, 5).toUpperCase();
-}
 
 export function NewBoxForm() {
   const router = useRouter();
   const [room, setRoom] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [fragile, setFragile] = useState(false);
+  const [quickFragile, setQuickFragile] = useState(false);
+  const [showFullForm, setShowFullForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const suggestion = useMemo(() => suggest(room), [room]);
+  const suggestion = useMemo(() => suggestRoomCode(room), [room]);
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function createBox(payload: Record<string, unknown>, mode: "full" | "quick") {
     setSaving(true);
-    const formData = new FormData(e.currentTarget);
-    const raw = Object.fromEntries(formData.entries()) as Record<string, unknown>;
-    const payload = {
-      ...raw,
-      roomCode: String(roomCode || suggestion),
-      fragile
-    };
+    setFormError(null);
 
     const res = await fetch("/api/boxes", {
       method: "POST",
@@ -65,19 +31,91 @@ export function NewBoxForm() {
     });
 
     if (!res.ok) {
-      alert("Could not create box");
+      const body = await res.json().catch(() => ({}));
+      setFormError(typeof body.error === "string" ? body.error : "Could not create box. Try again.");
       setSaving(false);
       return;
     }
 
     const box = await res.json();
-    trackBoxCreate(box.id);
+    trackBoxCreate(box.id, mode);
     router.push(`/boxes/${box.id}`);
     router.refresh();
   }
 
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const raw = Object.fromEntries(formData.entries()) as Record<string, unknown>;
+    const payload = {
+      ...raw,
+      roomCode: String(roomCode || suggestion),
+      fragile
+    };
+    await createBox(payload, "full");
+  }
+
+  async function quickCreate(roomName: string) {
+    if (saving) return;
+    trackQuickCreateTap(roomName);
+    await createBox(buildQuickBoxPayload(roomName, { fragile: quickFragile }), "quick");
+  }
+
   return (
     <form className="space-y-4" onSubmit={onSubmit}>
+      <section className="card p-4 space-y-3" style={{ background: "linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)", borderColor: "#bfdbfe" }}>
+        <div>
+          <h2 className="font-semibold text-slate-800">Quick Create (10 sec)</h2>
+          <p className="text-sm text-slate-600 mt-1">Tap a room to create a box instantly with smart defaults.</p>
+        </div>
+
+        <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+          {COMMON_ROOMS.map((roomName) => (
+            <button
+              key={`quick-${roomName}`}
+              type="button"
+              className="btn"
+              style={{ minHeight: "2.85rem", fontWeight: 600 }}
+              onClick={() => quickCreate(roomName)}
+              aria-label={`Quick create box in ${roomName}`}
+              disabled={saving}
+            >
+              {saving ? "Creating..." : roomName}
+            </button>
+          ))}
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-slate-700 w-fit">
+          <input
+            type="checkbox"
+            checked={quickFragile}
+            onChange={(e) => setQuickFragile(e.target.checked)}
+            aria-label="Mark quick-created boxes as fragile"
+          />
+          Mark quick-created boxes as fragile
+        </label>
+      </section>
+
+      {formError && (
+        <div className="card p-3 text-sm text-red-700 bg-red-50 border-red-200" role="alert" aria-live="assertive">
+          {formError}
+        </div>
+      )}
+
+      <div className="card p-3">
+        <button
+          type="button"
+          className="btn w-full sm:w-auto"
+          onClick={() => setShowFullForm((v) => !v)}
+          aria-expanded={showFullForm}
+          aria-controls="full-box-form"
+        >
+          {showFullForm ? "Hide full form" : "Need more details? Open full form"}
+        </button>
+      </div>
+
+      {showFullForm && (
+        <div id="full-box-form" className="space-y-4">
       {/* Location */}
       <div>
         <h2 className="font-semibold text-slate-700 mb-3">Location</h2>
@@ -215,6 +253,8 @@ export function NewBoxForm() {
           {saving ? "Creating box..." : "📦 Create Box"}
         </button>
       </div>
+        </div>
+      )}
     </form>
   );
 }

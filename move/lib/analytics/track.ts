@@ -37,5 +37,9 @@ export const trackItemAdd = (boxId: string, source: "detail" | "scan" | "landing
   track("item_add", { boxId, details: { source } });
 
 /** Called when a new box is created */
-export const trackBoxCreate = (boxId: string) =>
-  track("box_create", { boxId });
+export const trackBoxCreate = (boxId: string, mode: "full" | "quick" = "full") =>
+  track("box_create", { boxId, details: { mode } });
+
+/** Called when user taps a one-tap quick create button */
+export const trackQuickCreateTap = (room: string) =>
+  track("quick_create_tap", { details: { room } });
