@@ -52,104 +52,259 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
 
   const width = mmToPx(widthMm, dpi);
   const height = mmToPx(heightMm, dpi);
-  const qrPx = mmToPx(layout.qrSizeMm, dpi);
-
   const isInventory = template === "inventory_4x6";
+  const qrPx = isInventory ? 0 : mmToPx(layout.qrSizeMm, dpi);
   const items = box.items ?? [];
   const itemCount = items.length;
+
+  // ── Inventory 4×6 PNG layout ──────────────────────────────────────────────
+  // Header zone: ~42% of height. Items zone: rest.
+  const pad = Math.round(width * 0.03);           // ~3% padding
+  const headerH = Math.round(height * 0.42);
+  const qrSize = headerH - pad * 2;               // QR fills header height minus padding
+  const leftW = width - qrSize - pad * 3;         // text column width
+
+  // Item font: scale so ~10 items fill the zone comfortably
+  const itemZoneH = height - headerH - pad * 2;
+  const baseFontPx = Math.max(18, Math.min(36, Math.floor(itemZoneH / Math.max(itemCount + 1.5, 4))));
   const itemFontPx = inventoryFontPx(itemCount, dpi);
-  // How many items fit in the space below the header
-  const headerHeightPx = mmToPx(35, dpi); // rough header + short code height
-  const availPx = height - headerHeightPx - 20;
-  const maxItems = Math.max(0, Math.floor(availPx / (itemFontPx * 1.4)));
+  const chosenFontPx = Math.max(itemFontPx, baseFontPx > 30 ? 30 : baseFontPx);
+
+  const lineH = Math.round(chosenFontPx * 1.45);
+  const headerLabelH = Math.round(chosenFontPx * 0.9);
+  const itemAreaH = itemZoneH - headerLabelH - pad;
+  const maxItems = Math.max(0, Math.floor(itemAreaH / lineH));
   const visibleItems = items.slice(0, maxItems);
   const hiddenCount = itemCount - visibleItems.length;
 
-  const image = new ImageResponse(
-    (
+  // Room code font: big, but never so big it crowds the header
+  const roomFontPx = Math.min(Math.round(headerH * 0.52), Math.round(leftW * 0.55));
+  const shortFontPx = Math.round(roomFontPx * 0.30);
+  const roomNameFontPx = Math.round(roomFontPx * 0.22);
+
+  const inventoryJsx = (
       <div
         style={{
           width: "100%",
           height: "100%",
           display: "flex",
-          flexDirection: isInventory ? "column" : "row",
-          border: "2px solid #0f172a",
+          flexDirection: "column",
+          background: "#ffffff",
+          fontFamily: "'Arial Black', Arial, sans-serif",
           boxSizing: "border-box",
-          padding: "14px",
-          fontFamily: "Arial",
-          justifyContent: isInventory ? "flex-start" : "space-between",
-          gap: isInventory ? "0" : "8px"
+          overflow: "hidden"
         }}
       >
-        {/* Header row: room code + QR */}
+        {/* ── HEADER BAND ─────────────────────────────────────── */}
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
+            flexDirection: "row",
+            alignItems: "stretch",
             width: "100%",
+            height: headerH,
+            background: "#0f172a",
+            padding: `${pad}px`,
+            boxSizing: "border-box",
+            gap: `${pad}px`,
             flexShrink: 0
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: isInventory ? Math.min(layout.roomCodeFontPx, 52) : layout.roomCodeFontPx, fontWeight: 900, lineHeight: 1.05 }}>
-              {box.roomCode}
-            </div>
-            <div style={{ fontSize: Math.max(10, layout.shortCodeFontPx), fontWeight: 700, color: "#374151", marginTop: "4px" }}>
-              {box.shortCode}
-            </div>
-            {!isInventory && layout.optionalLines.slice(0, 3).map((line, idx) => (
-              <div key={`${box.id}-opt-${idx}`} style={{ fontSize: 12, marginTop: "3px", color: "#6b7280" }}>
-                {line}
-              </div>
-            ))}
-            {isInventory && box.room && (
-              <div style={{ fontSize: 12, color: "#6b7280", marginTop: "3px" }}>{box.room}{box.zone ? ` · ${box.zone}` : ""}</div>
-            )}
-            {isInventory && box.fragile && (
-              <div style={{ fontSize: 11, color: "#b45309", fontWeight: 700, marginTop: "2px" }}>⚠ FRAGILE</div>
-            )}
-          </div>
-          <img src={qrData} alt="qr" style={{ width: qrPx, height: qrPx, flexShrink: 0 }} />
-        </div>
-
-        {/* Inventory section */}
-        {isInventory && itemCount > 0 && (
+          {/* Left: room code + short code + room name */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              borderTop: "1.5px solid #e2e8f0",
-              marginTop: "6px",
-              paddingTop: "5px",
-              width: "100%",
-              flexShrink: 0
+              justifyContent: "center",
+              flex: 1,
+              overflow: "hidden"
             }}
           >
-            <div style={{ fontSize: Math.max(9, itemFontPx * 0.85), fontWeight: 700, color: "#374151", marginBottom: "3px" }}>
-              CONTENTS ({itemCount} item{itemCount !== 1 ? "s" : ""})
+            <div
+              style={{
+                fontSize: roomFontPx,
+                fontWeight: 900,
+                color: "#ffffff",
+                lineHeight: 1,
+                letterSpacing: "-1px"
+              }}
+            >
+              {box.roomCode}
             </div>
-            {visibleItems.map((item, idx) => (
-              <div key={`${box.id}-item-${idx}`} style={{ display: "flex", alignItems: "baseline", gap: "5px", fontSize: itemFontPx, color: "#111827", lineHeight: 1.35 }}>
-                <span style={{ color: "#9ca3af", fontSize: itemFontPx * 0.85 }}>·</span>
-                <span>{item.name}{item.qty > 1 ? ` ×${item.qty}` : ""}</span>
+            <div
+              style={{
+                fontSize: shortFontPx,
+                fontWeight: 700,
+                color: "#94a3b8",
+                marginTop: Math.round(pad * 0.4),
+                letterSpacing: "0.5px"
+              }}
+            >
+              {box.shortCode}
+            </div>
+            {box.room && (
+              <div
+                style={{
+                  fontSize: roomNameFontPx,
+                  color: "#64748b",
+                  marginTop: Math.round(pad * 0.3),
+                  fontFamily: "Arial, sans-serif",
+                  fontWeight: 400
+                }}
+              >
+                {box.room}{box.zone ? ` · ${box.zone}` : ""}
               </div>
-            ))}
-            {hiddenCount > 0 && (
-              <div style={{ fontSize: Math.max(8, itemFontPx * 0.9), color: "#9ca3af", marginTop: "2px" }}>
-                + {hiddenCount} more item{hiddenCount !== 1 ? "s" : ""}
+            )}
+            {box.fragile && (
+              <div
+                style={{
+                  fontSize: roomNameFontPx,
+                  color: "#fbbf24",
+                  fontWeight: 700,
+                  marginTop: Math.round(pad * 0.3),
+                  fontFamily: "Arial, sans-serif"
+                }}
+              >
+                FRAGILE
               </div>
             )}
           </div>
-        )}
-        {isInventory && itemCount === 0 && (
-          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: "6px" }}>No items listed</div>
-        )}
+
+          {/* Right: QR code on white tile */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#ffffff",
+              borderRadius: Math.round(pad * 0.6),
+              width: qrSize,
+              height: qrSize,
+              flexShrink: 0,
+              padding: Math.round(pad * 0.3)
+            }}
+          >
+            <img src={qrData} alt="qr" style={{ width: "100%", height: "100%" }} />
+          </div>
+        </div>
+
+        {/* ── CONTENTS ZONE ───────────────────────────────────── */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            padding: `${Math.round(pad * 0.8)}px ${pad}px`,
+            boxSizing: "border-box",
+            overflow: "hidden"
+          }}
+        >
+          {/* Section label */}
+          <div
+            style={{
+              fontSize: Math.round(headerLabelH * 0.75),
+              fontWeight: 700,
+              color: "#64748b",
+              fontFamily: "Arial, sans-serif",
+              letterSpacing: "1px",
+              marginBottom: Math.round(pad * 0.4),
+              textTransform: "uppercase"
+            }}
+          >
+            Contents{itemCount > 0 ? ` · ${itemCount}` : ""}
+          </div>
+
+          {/* Item rows */}
+          {visibleItems.map((item, idx) => (
+            <div
+              key={`${box.id}-item-${idx}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: Math.round(chosenFontPx * 0.4),
+                height: lineH,
+                overflow: "hidden"
+              }}
+            >
+              <div
+                style={{
+                  width: Math.round(chosenFontPx * 0.18),
+                  height: Math.round(chosenFontPx * 0.18),
+                  background: "#0f172a",
+                  borderRadius: "50%",
+                  flexShrink: 0,
+                  marginTop: 2
+                }}
+              />
+              <div
+                style={{
+                  fontSize: chosenFontPx,
+                  color: "#0f172a",
+                  fontFamily: "Arial, sans-serif",
+                  fontWeight: 400,
+                  lineHeight: 1,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden"
+                }}
+              >
+                {item.name}{item.qty > 1 ? (
+                  <span style={{ color: "#64748b", fontSize: Math.round(chosenFontPx * 0.8) }}> ×{item.qty}</span>
+                ) : null}
+              </div>
+            </div>
+          ))}
+
+          {hiddenCount > 0 && (
+            <div
+              style={{
+                fontSize: Math.round(chosenFontPx * 0.8),
+                color: "#94a3b8",
+                fontFamily: "Arial, sans-serif",
+                marginTop: Math.round(pad * 0.3)
+              }}
+            >
+              + {hiddenCount} more
+            </div>
+          )}
+
+          {itemCount === 0 && (
+            <div style={{ fontSize: chosenFontPx, color: "#94a3b8", fontFamily: "Arial, sans-serif" }}>
+              No items listed
+            </div>
+          )}
+        </div>
       </div>
-    ),
-    { width, height }
   );
 
+  const standardJsx = (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "row",
+          border: "2px solid #0f172a",
+          boxSizing: "border-box",
+          padding: "14px",
+          fontFamily: "Arial",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "8px",
+          background: "#ffffff"
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+          <div style={{ fontSize: layout.roomCodeFontPx, fontWeight: 900, lineHeight: 1.05 }}>{box.roomCode}</div>
+          <div style={{ fontSize: Math.max(10, layout.shortCodeFontPx), fontWeight: 700, color: "#374151", marginTop: "4px" }}>{box.shortCode}</div>
+          {layout.optionalLines.slice(0, 3).map((line, idx) => (
+            <div key={`${box.id}-opt-${idx}`} style={{ fontSize: 12, marginTop: "3px", color: "#6b7280" }}>{line}</div>
+          ))}
+        </div>
+        <img src={qrData} alt="qr" style={{ width: qrPx, height: qrPx, flexShrink: 0 }} />
+      </div>
+  );
+
+  const image = new ImageResponse(isInventory ? inventoryJsx : standardJsx, { width, height });
   return Buffer.from(await image.arrayBuffer());
 }
 
