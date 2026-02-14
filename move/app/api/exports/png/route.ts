@@ -28,7 +28,8 @@ export async function POST(request: Request) {
     return new NextResponse(data, {
       headers: {
         "Content-Type": isZip ? "application/zip" : "image/png",
-        "Content-Disposition": `attachment; filename=labels-${Date.now()}.${isZip ? "zip" : "png"}`
+        "Content-Disposition": `attachment; filename=labels-${Date.now()}.${isZip ? "zip" : "png"}`,
+        "Cache-Control": "no-store, must-revalidate"
       }
     });
   } catch {
