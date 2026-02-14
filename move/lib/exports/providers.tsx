@@ -64,7 +64,7 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
   const headerLabelH = Math.round(height * 0.04);
   const itemZoneH = height - headerH - headerLabelH - pad * 3;
   const singleColFontPx = inventoryFontPx(itemCount, itemZoneH);
-  const useTwo = singleColFontPx < 16 && itemCount > 4;
+  const useTwo = itemCount > 8 || (singleColFontPx < 20 && itemCount > 4);
   const cols = useTwo ? 2 : 1;
   const itemsPerCol = Math.ceil(itemCount / cols);
   const chosenFontPx = Math.round(inventoryFontPx(itemsPerCol, itemZoneH));
@@ -403,7 +403,7 @@ export const pdf_provider = {
 
           // Determine columns: fit single column first, overflow to two
           const singleColFontSize = inventoryFontPt(itemCount, availHeight);
-          const useTwo = singleColFontSize < 5.5 && itemCount > 4;
+          const useTwo = itemCount > 8 || (singleColFontSize < 7 && itemCount > 4);
           const cols = useTwo ? 2 : 1;
           const itemsPerCol = Math.ceil(itemCount / cols);
           const colFontSize = inventoryFontPt(itemsPerCol, availHeight);

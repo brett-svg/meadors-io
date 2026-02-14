@@ -26,6 +26,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {user && (
                 <nav className="hidden sm:flex gap-1 text-sm ml-2">
                   <Link href="/dashboard" className="px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 font-medium">Dashboard</Link>
+                  <Link href="/boxes" className="px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 font-medium">All Boxes</Link>
                   <Link href="/boxes/new" className="px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 font-medium">+ New Box</Link>
                   <Link href="/labels" className="px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 font-medium">Labels</Link>
                   <Link href="/scan" className="px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 font-medium">📷 Scan</Link>
@@ -43,6 +44,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/dashboard" className="bottom-nav-item">
                 <span className="bottom-nav-icon">🏠</span>
                 Home
+              </Link>
+              <Link href="/boxes" className="bottom-nav-item">
+                <span className="bottom-nav-icon">📋</span>
+                Boxes
               </Link>
               <Link href="/boxes/new" className="bottom-nav-item">
                 <span className="bottom-nav-icon">➕</span>

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { SearchPanel } from "@/components/search-panel";
 import { PwaRegister } from "@/components/pwa-register";
+import { ClearCacheButton } from "@/components/clear-cache-button";
 
 function statusLabel(s: string) {
   const map: Record<string, string> = {
@@ -134,9 +135,10 @@ export default async function DashboardPage() {
       <section className="card p-4">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h2 className="font-semibold">Recent Boxes</h2>
-          <div className="flex gap-2 text-sm flex-wrap">
+          <div className="flex gap-2 text-sm flex-wrap items-center">
             <a className="btn" href="/api/exports/master-index">📄 Master Index</a>
             <a className="btn" href="/api/exports/insurance?format=pdf">🛡️ Insurance PDF</a>
+            <ClearCacheButton />
           </div>
         </div>
         {recentBoxes.length === 0 ? (

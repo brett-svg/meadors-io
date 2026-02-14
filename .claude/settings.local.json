@@ -7,7 +7,15 @@
       "Bash(git commit:*)",
       "Bash(npx prisma db seed:*)",
       "Bash(npx tsx:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(railway run npx tsx:*)",
+      "Bash(railway variables:*)",
+      "Bash(railway service:*)",
+      "Bash(railway status:*)",
+      "Bash(/Users/brett/Meadors.IO/move/app/api/setup-users/route.ts:*)",
+      "Bash(git push:*)",
+      "Skill(deploy)",
+      "Skill(deploy:*)"
     ]
   }
 }
