@@ -85,6 +85,12 @@ export function LabelsWorkbench({ boxes }: { boxes: any[] }) {
     URL.revokeObjectURL(href);
   }
 
+  async function onCreateSizeSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    await createSize(new FormData(e.currentTarget));
+    e.currentTarget.reset();
+  }
+
   return (
     <div className="space-y-4">
       <section className="card p-4 grid gap-3 lg:grid-cols-3">
@@ -171,8 +177,3 @@ export function LabelsWorkbench({ boxes }: { boxes: any[] }) {
     </div>
   );
 }
-  async function onCreateSizeSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    await createSize(new FormData(e.currentTarget));
-    e.currentTarget.reset();
-  }

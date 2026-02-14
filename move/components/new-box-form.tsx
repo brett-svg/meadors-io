@@ -47,9 +47,12 @@ export function NewBoxForm() {
     e.preventDefault();
     setSaving(true);
     const formData = new FormData(e.currentTarget);
-    const payload = Object.fromEntries(formData.entries());
-    payload.roomCode = String(roomCode || suggestion);
-    payload.fragile = formData.get("fragile") === "on";
+    const raw = Object.fromEntries(formData.entries()) as Record<string, unknown>;
+    const payload = {
+      ...raw,
+      roomCode: String(roomCode || suggestion),
+      fragile: formData.get("fragile") === "on"
+    };
 
     const res = await fetch("/api/boxes", {
       method: "POST",

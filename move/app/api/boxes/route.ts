@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const existingCodes = await prisma.box.findMany({ select: { roomCode: true } });
-    const roomCode = body.roomCode?.trim() || suggestRoomCode(body.room || "", existingCodes.map((x) => x.roomCode));
+    const roomCode = body.roomCode?.trim() || suggestRoomCode(body.room || "", existingCodes.map((x) => x.roomCode).filter((c): c is string => c != null));
 
     let shortCode = await generateShortCode();
     for (let i = 0; i < 5; i += 1) {
