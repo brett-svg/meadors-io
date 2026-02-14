@@ -96,7 +96,7 @@ Default seeded credentials:
    - `SESSION_SECRET`
    - optional S3 vars (`S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`)
 3. Deploy from repo root (`move/`).
-4. Railway start command runs `npm run prisma:deploy && npm run start` (see `railway.json`).
+4. Container startup runs `npm run prisma:deploy` then `npm run start` (defined in `Dockerfile` CMD).
 5. Run seed once (Railway shell):
    - `npm run seed`
 
