@@ -23,24 +23,33 @@ export function NewBoxForm() {
   async function createBox(payload: Record<string, unknown>, mode: "full" | "quick") {
     setSaving(true);
     setFormError(null);
+    try {
+      const res = await fetch("/api/boxes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
 
-    const res = await fetch("/api/boxes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setFormError(typeof body.error === "string" ? body.error : "Could not create box. Try again.");
+        return;
+      }
 
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setFormError(typeof body.error === "string" ? body.error : "Could not create box. Try again.");
+      const box = await res.json().catch(() => null);
+      if (!box || typeof box.id !== "string") {
+        setFormError("Box was created but response was invalid. Please refresh and try again.");
+        return;
+      }
+
+      trackBoxCreate(box.id, mode);
+      router.push(`/boxes/${box.id}`);
+      router.refresh();
+    } catch {
+      setFormError("Network error while creating the box. Check connection and try again.");
+    } finally {
       setSaving(false);
-      return;
     }
-
-    const box = await res.json();
-    trackBoxCreate(box.id, mode);
-    router.push(`/boxes/${box.id}`);
-    router.refresh();
   }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
