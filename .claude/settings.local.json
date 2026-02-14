@@ -4,7 +4,10 @@
       "Bash(npx create-next-app:*)",
       "Bash(npx tsc:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npx prisma db seed:*)",
+      "Bash(npx tsx:*)",
+      "Bash(ls:*)"
     ]
   }
 }
