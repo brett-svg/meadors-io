@@ -23,7 +23,13 @@ function statusClass(s: string) {
 }
 
 export function BoxDetailClient({ initialBox }: { initialBox: any }) {
-  const [box, setBox] = useState(initialBox);
+  const normalizeBox = (value: any) => ({
+    ...value,
+    items: Array.isArray(value?.items) ? value.items : [],
+    photos: Array.isArray(value?.photos) ? value.photos : []
+  });
+
+  const [box, setBox] = useState(normalizeBox(initialBox));
   const [itemName, setItemName] = useState("");
   const [bulkInput, setBulkInput] = useState("");
   const [saving, setSaving] = useState(false);
@@ -45,7 +51,15 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      if (res.ok) setBox(await res.json());
+      if (res.ok) {
+        const updated = await res.json();
+        setBox((prev: any) => normalizeBox({
+          ...prev,
+          ...updated,
+          items: updated?.items ?? prev?.items,
+          photos: updated?.photos ?? prev?.photos
+        }));
+      }
     } catch {
       enqueueWrite({
         id: crypto.randomUUID(),
@@ -121,7 +135,7 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
     if (res.ok) {
       const photo = await res.json();
       if (photo.warning) alert(photo.warning);
-      setBox({ ...box, photos: [...box.photos, photo] });
+      setBox({ ...box, photos: [...(box.photos || []), photo] });
     }
   }
 
