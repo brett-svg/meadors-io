@@ -61,8 +61,8 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
   const leftW = width - qrSize - pad * 3;         // text column width
 
   // Item font: fit ALL items, use two columns if single-col font gets too small
-  const headerLabelH = Math.round(height * 0.055);
-  const itemZoneH = height - headerH - headerLabelH - pad * 4;
+  const headerLabelH = Math.round(height * 0.04);
+  const itemZoneH = height - headerH - headerLabelH - pad * 3;
   const singleColFontPx = inventoryFontPx(itemCount, itemZoneH);
   const useTwo = itemCount > 8 || (singleColFontPx < 20 && itemCount > 4);
   const cols = useTwo ? 2 : 1;
@@ -195,13 +195,12 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
           {/* Section label */}
           <div
             style={{
-              fontSize: Math.round(headerLabelH * 0.65),
+              fontSize: Math.round(headerLabelH * 0.75),
               fontWeight: 700,
               color: "#64748b",
               fontFamily: "Arial, sans-serif",
               letterSpacing: "1px",
-              flexShrink: 0,
-              marginBottom: Math.round(pad * 0.6),
+              marginBottom: Math.round(pad * 0.4),
               textTransform: "uppercase"
             }}
           >
@@ -393,10 +392,7 @@ export const pdf_provider = {
           const itemCount = items.length;
           const contentsY = headerY - pad;
           const labelFontSize = 7;
-          // itemStartY must be far enough below the CONTENTS label that item text (which ascends upward)
-          // doesn't overlap: gap = labelFontSize + item font cap height (~0.7 * colFontSize) + 3pt buffer
-          // We don't know colFontSize yet, so use a generous fixed gap of labelFontSize * 2 + 4
-          const itemStartY = contentsY - labelFontSize * 2 - 6;
+          const itemStartY = contentsY - labelFontSize - 5;
           const availHeight = itemStartY - pad;
 
           // "CONTENTS · N" label
