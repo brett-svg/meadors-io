@@ -20,8 +20,7 @@ export async function POST(request: Request) {
     return new NextResponse(pdf, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename=labels-${Date.now()}.pdf`,
-        "Cache-Control": "no-store, must-revalidate"
+        "Content-Disposition": `attachment; filename=labels-${Date.now()}.pdf`
       }
     });
   } catch {

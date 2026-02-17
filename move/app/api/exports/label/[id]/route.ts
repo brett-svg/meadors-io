@@ -56,8 +56,7 @@ export async function GET(
     return new NextResponse(pdf, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename=${box.shortCode}-label.pdf`,
-        "Cache-Control": "no-store, must-revalidate"
+        "Content-Disposition": `inline; filename=${box.shortCode}-label.pdf`
       }
     });
   } catch {
