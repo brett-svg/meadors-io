@@ -8,9 +8,9 @@ import { buildQuickBoxPayload } from "@/lib/utils/quick-box";
 
 const COMMON_ROOMS = ["Kitchen", "Living Room", "Bedroom", "Bathroom", "Office", "Garage", "Dining Room", "Guest Bedroom"];
 
-export function NewBoxForm() {
+export function NewBoxForm({ initialRoom }: { initialRoom?: string } = {}) {
   const router = useRouter();
-  const [room, setRoom] = useState("");
+  const [room, setRoom] = useState(initialRoom ?? "");
   const [roomCode, setRoomCode] = useState("");
   const [fragile, setFragile] = useState(false);
   const [quickFragile, setQuickFragile] = useState(false);

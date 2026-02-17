@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { enqueueWrite, flushQueue } from "@/lib/pwa/queue";
 
 const LABEL_OPTIONS = [
@@ -36,10 +37,12 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
     photos: Array.isArray(value?.photos) ? value.photos : []
   });
 
+  const router = useRouter();
   const [box, setBox] = useState(normalizeBox(initialBox));
   const [itemName, setItemName] = useState("");
   const [bulkInput, setBulkInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -90,6 +93,13 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
   }, [box.shortCode]);
 
   const currentStatus = STATUS_OPTIONS.find((s) => s.value === box.status);
+
+  async function deleteBox() {
+    if (!confirm(`Delete box ${box.shortCode} (${box.roomCode})? This cannot be undone.`)) return;
+    setDeleting(true);
+    await fetch(`/api/boxes/${box.id}`, { method: "DELETE" });
+    router.push("/boxes");
+  }
 
   async function patchBox(patch: Record<string, unknown>) {
     setSaving(true);
@@ -262,6 +272,14 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
               onClick={() => flushQueue()}
             >
               ↑ Sync offline
+            </button>
+            <button
+              className="btn btn-danger text-xs"
+              style={{ padding: "0.25rem 0.6rem" }}
+              onClick={deleteBox}
+              disabled={deleting}
+            >
+              🗑️ Delete Box
             </button>
           </div>
         </div>

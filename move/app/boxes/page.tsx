@@ -3,8 +3,9 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { BoxList } from "@/components/box-list";
 
-export default async function BoxesPage() {
+export default async function BoxesPage({ searchParams }: { searchParams: Promise<{ room?: string }> }) {
   await requireUser();
+  const { room } = await searchParams;
 
   const boxes = await prisma.box.findMany({
     orderBy: [{ room: "asc" }, { createdAt: "desc" }],
@@ -17,7 +18,7 @@ export default async function BoxesPage() {
         <h1 className="text-xl font-bold">All Boxes</h1>
         <Link href="/boxes/new" className="btn btn-primary">+ New Box</Link>
       </div>
-      <BoxList boxes={boxes} />
+      <BoxList boxes={boxes} initialRoom={room} />
     </main>
   );
 }
