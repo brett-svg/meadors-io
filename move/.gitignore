@@ -6,4 +6,3 @@ node_modules
 coverage
 .prisma
 public/uploads
-tsconfig.tsbuildinfo
