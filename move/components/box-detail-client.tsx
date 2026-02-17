@@ -183,6 +183,7 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
     });
     if (res.ok) {
       const photo = await res.json();
+      if (photo.warning) alert(photo.warning);
       setBox({ ...box, photos: [...(box.photos || []), photo] });
     }
   }
