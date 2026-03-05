@@ -103,11 +103,42 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
                 {line}
               </div>
             ))}
+            {!isInventory && box.fragile && (
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 900,
+                  color: "#9a3412",
+                  marginTop: "6px",
+                  background: "#fef3c7",
+                  border: "1px solid #fcd34d",
+                  borderRadius: "999px",
+                  padding: "2px 10px",
+                  width: "fit-content"
+                }}
+              >
+                FRAGILE
+              </div>
+            )}
             {isInventory && box.room && (
               <div style={{ fontSize: 12, color: "#6b7280", marginTop: "3px" }}>{box.room}{box.zone ? ` · ${box.zone}` : ""}</div>
             )}
             {isInventory && box.fragile && (
-              <div style={{ fontSize: 11, color: "#b45309", fontWeight: 700, marginTop: "2px" }}>⚠ FRAGILE</div>
+              <div
+                style={{
+                  fontSize: 14,
+                  color: "#9a3412",
+                  fontWeight: 900,
+                  marginTop: "5px",
+                  background: "#fef3c7",
+                  border: "1px solid #fcd34d",
+                  borderRadius: "999px",
+                  padding: "2px 8px",
+                  width: "fit-content"
+                }}
+              >
+                FRAGILE
+              </div>
             )}
           </div>
           <img src={qrData} alt="qr" style={{ width: qrPx, height: qrPx, flexShrink: 0 }} />
@@ -186,7 +217,16 @@ export const pdf_provider = {
           page.drawText(String(box.room).slice(0, 20), { x: x + 5, y: y + labelHeight - 48, size: 7, font: regularFont, color: rgb(0.3, 0.3, 0.3) });
         }
         if (box.fragile) {
-          page.drawText("⚠ FRAGILE", { x: x + 5, y: y + 6, size: 7, font, color: rgb(0.8, 0.4, 0) });
+          page.drawRectangle({
+            x: x + 4,
+            y: y + 4,
+            width: labelWidth - 8,
+            height: 10,
+            color: rgb(0.995, 0.95, 0.8),
+            borderColor: rgb(0.98, 0.8, 0.35),
+            borderWidth: 0.6
+          });
+          page.drawText("FRAGILE", { x: x + 7, y: y + 7, size: 8, font, color: rgb(0.7, 0.27, 0) });
         }
 
         // QR code on the right
@@ -233,7 +273,16 @@ export const pdf_provider = {
 
           // Fragile badge
           if (box.fragile) {
-            page.drawText("⚠ FRAGILE", { x: 8, y: 8, size: 8, font, color: rgb(0.8, 0.4, 0) });
+            page.drawRectangle({
+              x: 7,
+              y: 6,
+              width: 112,
+              height: 14,
+              color: rgb(0.995, 0.95, 0.8),
+              borderColor: rgb(0.98, 0.8, 0.35),
+              borderWidth: 0.8
+            });
+            page.drawText("FRAGILE", { x: 12, y: 10, size: 11, font, color: rgb(0.7, 0.27, 0) });
           }
 
           // QR code (top-right, vertically centred in header zone)
@@ -287,8 +336,20 @@ export const pdf_provider = {
           // ── Standard layout ───────────────────────────────────────────────
           page.drawText(box.roomCode, { x: 8, y: pagePtH - 24, size: Math.min(layout.roomCodeFontPx * 0.6, 36), font });
           page.drawText(box.shortCode, { x: 8, y: pagePtH - 42, size: Math.max(layout.shortCodeFontPx * 0.6, 10), font: regularFont });
+          if (box.fragile) {
+            page.drawRectangle({
+              x: 7,
+              y: pagePtH - 62,
+              width: Math.min(120, pagePtW - 14),
+              height: 14,
+              color: rgb(0.995, 0.95, 0.8),
+              borderColor: rgb(0.98, 0.8, 0.35),
+              borderWidth: 0.8
+            });
+            page.drawText("FRAGILE", { x: 12, y: pagePtH - 58, size: 11, font, color: rgb(0.7, 0.27, 0) });
+          }
           layout.optionalLines.slice(0, 4).forEach((line, i) => {
-            page.drawText(line, { x: 8, y: pagePtH - 56 - i * 11, size: 9, font: regularFont });
+            page.drawText(line, { x: 8, y: pagePtH - (box.fragile ? 78 : 56) - i * 11, size: 9, font: regularFont });
           });
           page.drawImage(qr, { x: pagePtW - qrPt - 6, y: 6, width: qrPt, height: qrPt });
         }

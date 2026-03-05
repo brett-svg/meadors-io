@@ -24,7 +24,7 @@ export function effectiveSize(size: LabelSizeInput) {
 export function buildOptionalLines(data: LabelRenderData): string[] {
   const lines: string[] = [];
   if (data.room) lines.push(data.room);
-  if (data.priority || data.fragile) lines.push(`${data.priority || ""}${data.fragile ? " • FRAGILE" : ""}`.trim());
+  if (data.priority) lines.push(data.priority);
   if (data.zone) lines.push(`Zone: ${data.zone}`);
   if (data.notes) lines.push(data.notes);
   return lines;

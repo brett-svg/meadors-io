@@ -22,6 +22,14 @@ function statusClass(s: string) {
   return map[s] ?? "status-draft";
 }
 
+type DestinationBox = {
+  id: string;
+  room: string;
+  roomCode: string;
+  shortCode: string;
+  zone?: string | null;
+};
+
 export function BoxDetailClient({ initialBox }: { initialBox: any }) {
   const normalizeBox = (value: any) => ({
     ...value,
@@ -34,6 +42,17 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
   const [bulkInput, setBulkInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
+  const [moveRoom, setMoveRoom] = useState(initialBox.room || "");
+  const [moveRoomCode, setMoveRoomCode] = useState(initialBox.roomCode || "");
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editItemName, setEditItemName] = useState("");
+  const [editItemQty, setEditItemQty] = useState("1");
+  const [movingItemId, setMovingItemId] = useState<string | null>(null);
+  const [moveTargetBoxId, setMoveTargetBoxId] = useState("");
+  const [moveTargets, setMoveTargets] = useState<DestinationBox[]>([]);
+  const [loadingMoveTargets, setLoadingMoveTargets] = useState(false);
+  const [movingItem, setMovingItem] = useState(false);
+  const [itemActionError, setItemActionError] = useState<string | null>(null);
 
   const qrUrl = useMemo(() => {
     if (typeof window === "undefined") return `/box/${box.shortCode}`;
@@ -41,6 +60,17 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
   }, [box.shortCode]);
 
   const currentStatus = STATUS_OPTIONS.find((s) => s.value === box.status);
+  const moveTargetOptions = useMemo(
+    () =>
+      moveTargets
+        .filter((candidate) => candidate.id !== box.id)
+        .sort((a, b) => {
+          const roomCmp = (a.room || "").localeCompare(b.room || "");
+          if (roomCmp !== 0) return roomCmp;
+          return (a.roomCode || "").localeCompare(b.roomCode || "");
+        }),
+    [moveTargets, box.id]
+  );
 
   async function patchBox(patch: Record<string, unknown>) {
     setSaving(true);
@@ -59,6 +89,8 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
           items: updated?.items ?? prev?.items,
           photos: updated?.photos ?? prev?.photos
         }));
+        if (typeof updated?.room === "string") setMoveRoom(updated.room);
+        if (typeof updated?.roomCode === "string") setMoveRoomCode(updated.roomCode);
       }
     } catch {
       enqueueWrite({
@@ -116,6 +148,110 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
       body: JSON.stringify({ id })
     });
     if (res.ok) setBox({ ...box, items: await res.json() });
+  }
+
+  async function ensureMoveTargetsLoaded() {
+    if (moveTargets.length > 0) return;
+    setLoadingMoveTargets(true);
+    try {
+      const res = await fetch("/api/boxes");
+      if (!res.ok) throw new Error("Failed to load boxes.");
+      const payload = await res.json();
+      if (!Array.isArray(payload)) throw new Error("Invalid box payload.");
+      setMoveTargets(
+        payload
+          .filter((entry) => typeof entry?.id === "string")
+          .map((entry) => ({
+            id: String(entry.id),
+            room: String(entry.room || ""),
+            roomCode: String(entry.roomCode || ""),
+            shortCode: String(entry.shortCode || ""),
+            zone: typeof entry.zone === "string" ? entry.zone : null
+          }))
+      );
+    } catch {
+      setItemActionError("Could not load destination boxes.");
+    } finally {
+      setLoadingMoveTargets(false);
+    }
+  }
+
+  async function openMoveItem(itemId: string) {
+    setItemActionError(null);
+    setMovingItemId(itemId);
+    setMoveTargetBoxId("");
+    await ensureMoveTargetsLoaded();
+  }
+
+  function cancelMoveItem() {
+    setMovingItemId(null);
+    setMoveTargetBoxId("");
+  }
+
+  async function confirmMoveItem(item: any) {
+    if (!movingItemId || !moveTargetBoxId) return;
+    setMovingItem(true);
+    setItemActionError(null);
+    try {
+      const res = await fetch("/api/items/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id, sourceBoxId: box.id, targetBoxId: moveTargetBoxId })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setItemActionError(typeof body.error === "string" ? body.error : "Could not move item.");
+        return;
+      }
+      if (Array.isArray(body.sourceItems)) {
+        setBox({ ...box, items: body.sourceItems });
+      }
+      cancelMoveItem();
+    } catch {
+      setItemActionError("Network error while moving item.");
+    } finally {
+      setMovingItem(false);
+    }
+  }
+
+  function startEditItem(item: any) {
+    setEditingItemId(item.id);
+    setEditItemName(String(item.name ?? ""));
+    setEditItemQty(String(Math.max(1, Number(item.qty) || 1)));
+  }
+
+  function cancelEditItem() {
+    setEditingItemId(null);
+    setEditItemName("");
+    setEditItemQty("1");
+  }
+
+  async function saveEditItem(item: any) {
+    if (!editingItemId) return;
+    const trimmedName = editItemName.trim();
+    if (!trimmedName) return;
+    const safeQty = Math.max(1, Number(editItemQty) || 1);
+    const payload = {
+      id: item.id,
+      name: trimmedName,
+      qty: safeQty,
+      packed: Boolean(item.packed),
+      tags: Array.isArray(item.tags) ? item.tags : []
+    };
+
+    const res = await fetch(`/api/boxes/${box.id}/items`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) return;
+
+    const updated = await res.json();
+    setBox({
+      ...box,
+      items: box.items.map((current: any) => (current.id === updated.id ? { ...current, ...updated } : current))
+    });
+    cancelEditItem();
   }
 
   async function uploadPhoto(file: File | null) {
@@ -228,6 +364,39 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
         </div>
       </section>
 
+      {/* Room move */}
+      <section className="card p-4">
+        <h2 className="font-semibold mb-3">Room</h2>
+        <div className="grid gap-2 sm:grid-cols-[1fr,120px,auto] items-end">
+          <div>
+            <label className="form-label">Room Name</label>
+            <input
+              className="field"
+              value={moveRoom}
+              onChange={(e) => setMoveRoom(e.target.value)}
+              placeholder="e.g. Living Room"
+            />
+          </div>
+          <div>
+            <label className="form-label">Room Code</label>
+            <input
+              className="field"
+              value={moveRoomCode}
+              onChange={(e) => setMoveRoomCode(e.target.value.toUpperCase())}
+              placeholder="e.g. LR"
+              maxLength={5}
+            />
+          </div>
+          <button
+            className="btn"
+            disabled={saving || !moveRoom.trim()}
+            onClick={() => patchBox({ room: moveRoom.trim(), roomCode: moveRoomCode.trim() || box.roomCode })}
+          >
+            Move Box
+          </button>
+        </div>
+      </section>
+
       {/* Inventory */}
       <section className="card p-4">
         <div className="flex items-center justify-between mb-3">
@@ -268,24 +437,101 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
         )}
 
         <div className="mt-3 space-y-1.5">
+          {itemActionError && <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">{itemActionError}</div>}
           {box.items.length === 0 ? (
             <div className="text-sm text-slate-400 text-center py-4">No items yet — add some above</div>
           ) : (
             box.items.map((item: any) => (
               <div key={item.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{item.name}</span>
-                  {item.qty > 1 && (
-                    <span className="text-xs font-semibold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">×{item.qty}</span>
-                  )}
-                </div>
-                <button
-                  className="btn btn-danger text-xs"
-                  style={{ padding: "0.2rem 0.5rem" }}
-                  onClick={() => removeItem(item.id)}
-                >
-                  Remove
-                </button>
+                {editingItemId === item.id ? (
+                  <div className="w-full flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input
+                      className="field text-sm"
+                      value={editItemName}
+                      onChange={(e) => setEditItemName(e.target.value)}
+                      placeholder="Item name"
+                    />
+                    <input
+                      className="field text-sm sm:w-24"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={editItemQty}
+                      onChange={(e) => setEditItemQty(e.target.value)}
+                      placeholder="Qty"
+                    />
+                    <div className="flex gap-1.5">
+                      <button className="btn btn-primary text-xs" style={{ padding: "0.2rem 0.5rem" }} onClick={() => saveEditItem(item)}>
+                        Save
+                      </button>
+                      <button className="btn text-xs" style={{ padding: "0.2rem 0.5rem" }} onClick={cancelEditItem}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{item.name}</span>
+                      {item.qty > 1 && (
+                        <span className="text-xs font-semibold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">×{item.qty}</span>
+                      )}
+                    </div>
+                    <div className="flex gap-1.5">
+                      {movingItemId === item.id ? (
+                        <div className="flex flex-wrap justify-end items-center gap-1.5">
+                          <select
+                            className="field text-xs"
+                            style={{ minWidth: "220px", padding: "0.3rem 0.45rem" }}
+                            value={moveTargetBoxId}
+                            disabled={loadingMoveTargets || movingItem}
+                            onChange={(e) => setMoveTargetBoxId(e.target.value)}
+                          >
+                            <option value="">{loadingMoveTargets ? "Loading boxes..." : "Select destination box"}</option>
+                            {moveTargetOptions.map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {option.roomCode} · {option.room}{option.zone ? ` / ${option.zone}` : ""} · {option.shortCode}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            className="btn btn-primary text-xs"
+                            style={{ padding: "0.2rem 0.5rem" }}
+                            disabled={!moveTargetBoxId || movingItem}
+                            onClick={() => confirmMoveItem(item)}
+                          >
+                            {movingItem ? "Moving..." : "Confirm"}
+                          </button>
+                          <button className="btn text-xs" style={{ padding: "0.2rem 0.5rem" }} onClick={cancelMoveItem}>
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          className="btn text-xs"
+                          style={{ padding: "0.2rem 0.5rem" }}
+                          onClick={() => openMoveItem(item.id)}
+                        >
+                          Move
+                        </button>
+                      )}
+                      <button
+                        className="btn text-xs"
+                        style={{ padding: "0.2rem 0.5rem" }}
+                        onClick={() => startEditItem(item)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-danger text-xs"
+                        style={{ padding: "0.2rem 0.5rem" }}
+                        onClick={() => removeItem(item.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))
           )}
