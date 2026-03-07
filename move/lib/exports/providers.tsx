@@ -13,15 +13,15 @@ function inventoryFontPt(itemCount: number, availableHeightPt: number): number {
   if (itemCount === 0) return 9;
   const lineHeight = availableHeightPt / itemCount;
   const fontSize = lineHeight / 1.45;
-  return Math.min(10, Math.max(4, fontSize));
+  return Math.min(9, Math.max(5, fontSize));
 }
 
 /** Font size (px) that fits all items in the available height */
 function inventoryFontPx(itemCount: number, availableHeightPx: number): number {
-  if (itemCount === 0) return 28;
+  if (itemCount === 0) return 22;
   const lineHeight = availableHeightPx / itemCount;
   const fontSize = lineHeight / 1.45;
-  return Math.min(36, Math.max(14, fontSize));
+  return Math.min(24, Math.max(12, fontSize));
 }
 
 type BoxForLabel = Pick<
@@ -61,14 +61,16 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
   const leftW = width - qrSize - pad * 3;         // text column width
 
   // Item font: fit ALL items, use two columns if single-col font gets too small
-  const headerLabelH = Math.round(height * 0.04);
+  const headerLabelH = Math.max(18, Math.min(34, Math.round(height * 0.024)));
   const itemZoneH = height - headerH - headerLabelH - pad * 3;
   const singleColFontPx = inventoryFontPx(itemCount, itemZoneH);
   const useTwo = itemCount > 8 || (singleColFontPx < 20 && itemCount > 4);
   const cols = useTwo ? 2 : 1;
   const itemsPerCol = Math.ceil(itemCount / cols);
   const chosenFontPx = Math.round(inventoryFontPx(itemsPerCol, itemZoneH));
-  const lineH = Math.round(chosenFontPx * 1.45);
+  const lineH = Math.max(Math.round(chosenFontPx * 1.45), chosenFontPx + 8);
+  const contentsLabelPx = Math.max(14, Math.min(24, Math.round(chosenFontPx * 0.95)));
+  const contentsGapPx = Math.max(8, Math.round(pad * 0.7));
 
   // Room code font: big, but never so big it crowds the header
   const roomFontPx = Math.min(Math.round(headerH * 0.52), Math.round(leftW * 0.55));
@@ -195,12 +197,12 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
           {/* Section label */}
           <div
             style={{
-              fontSize: Math.round(headerLabelH * 0.75),
+              fontSize: contentsLabelPx,
               fontWeight: 700,
               color: "#64748b",
               fontFamily: "Arial, sans-serif",
               letterSpacing: "1px",
-              marginBottom: Math.round(pad * 0.4),
+              marginBottom: contentsGapPx,
               textTransform: "uppercase"
             }}
           >
@@ -214,7 +216,7 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
                 {items.slice(col * itemsPerCol, (col + 1) * itemsPerCol).map((item, idx) => (
                   <div
                     key={`${box.id}-c${col}-${idx}`}
-                    style={{ display: "flex", alignItems: "center", gap: Math.round(chosenFontPx * 0.35), height: lineH, overflow: "hidden" }}
+                    style={{ display: "flex", alignItems: "center", gap: Math.round(chosenFontPx * 0.32), height: lineH, overflow: "hidden" }}
                   >
                     <div style={{
                       width: Math.max(4, Math.round(chosenFontPx * 0.15)),
@@ -392,7 +394,8 @@ export const pdf_provider = {
           const itemCount = items.length;
           const contentsY = headerY - pad;
           const labelFontSize = 7;
-          const itemStartY = contentsY - labelFontSize - 5;
+          const itemTopGap = 10;
+          const itemStartY = contentsY - labelFontSize - itemTopGap;
           const availHeight = itemStartY - pad;
 
           // "CONTENTS · N" label
@@ -406,7 +409,7 @@ export const pdf_provider = {
           const useTwo = itemCount > 8 || (singleColFontSize < 7 && itemCount > 4);
           const cols = useTwo ? 2 : 1;
           const itemsPerCol = Math.ceil(itemCount / cols);
-          const colFontSize = inventoryFontPt(itemsPerCol, availHeight);
+          const colFontSize = Math.min(9, inventoryFontPt(itemsPerCol, availHeight));
           const lineH = colFontSize * 1.45;
           const colWidth = (pagePtW - pad * 2) / cols;
           const bulletR = Math.max(0.8, colFontSize * 0.1);
