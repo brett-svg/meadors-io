@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { enqueueWrite, flushQueue } from "@/lib/pwa/queue";
 
 const STATUS_OPTIONS = [
@@ -31,6 +32,7 @@ type DestinationBox = {
 };
 
 export function BoxDetailClient({ initialBox }: { initialBox: any }) {
+  const router = useRouter();
   const normalizeBox = (value: any) => ({
     ...value,
     items: Array.isArray(value?.items) ? value.items : [],
@@ -53,6 +55,7 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
   const [loadingMoveTargets, setLoadingMoveTargets] = useState(false);
   const [movingItem, setMovingItem] = useState(false);
   const [itemActionError, setItemActionError] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState(false);
 
   const qrUrl = useMemo(() => {
     if (typeof window === "undefined") return `/box/${box.shortCode}`;
@@ -275,6 +278,25 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
     }
   }
 
+  async function duplicateBox() {
+    if (duplicating) return;
+    setDuplicating(true);
+    try {
+      const res = await fetch(`/api/boxes/${box.id}/duplicate`, { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || typeof body?.id !== "string") {
+        alert(typeof body?.error === "string" ? body.error : "Could not duplicate box.");
+        return;
+      }
+      router.push(`/boxes/${body.id}`);
+      router.refresh();
+    } catch {
+      alert("Network error while duplicating box.");
+    } finally {
+      setDuplicating(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Box header */}
@@ -306,6 +328,14 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
             >
               🏷️ Print Label
             </a>
+            <button
+              className="btn text-sm"
+              style={{ padding: "0.4rem 0.85rem" }}
+              onClick={duplicateBox}
+              disabled={duplicating}
+            >
+              {duplicating ? "Duplicating..." : "📄 Duplicate Box"}
+            </button>
             <button
               className="btn text-xs text-slate-400"
               style={{ padding: "0.25rem 0.6rem" }}
