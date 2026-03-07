@@ -153,10 +153,11 @@ async function renderSinglePng(box: BoxForLabel, template: LabelTemplateKey, lab
             {box.fragile && (
               <div
                 style={{
-                  fontSize: roomNameFontPx,
-                  color: "#fbbf24",
+                  fontSize: Math.max(roomNameFontPx + 6, 22),
+                  color: "#ffffff",
                   fontWeight: 700,
-                  marginTop: Math.round(pad * 0.3),
+                  marginTop: Math.round(pad * 0.45),
+                  letterSpacing: "0.5px",
                   fontFamily: "Arial, sans-serif"
                 }}
               >
@@ -386,7 +387,7 @@ export const pdf_provider = {
           if (box.fragile) {
             page.drawText("FRAGILE", {
               x: textX, y: headerY + pad,
-              size: roomNameFontSize, font, color: rgb(0.98, 0.75, 0.14)   // amber
+              size: Math.max(roomNameFontSize + 3, 12), font, color: rgb(1, 1, 1)
             });
           }
 
