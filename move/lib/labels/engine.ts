@@ -12,6 +12,7 @@ export const TEMPLATE_LABELS: Record<LabelTemplateKey, string> = {
 
 const MIN_QR_MM = 18;
 const MIN_SHORT_CODE_PX = 12;
+const MAX_ROOM_CODE_PX = 72;
 
 export function effectiveSize(size: LabelSizeInput) {
   const landscape = size.orientation === "landscape";
@@ -43,8 +44,11 @@ export function computeLabelLayout(size: LabelSizeInput, data: LabelRenderData, 
   if (template === "storage") optionalLines = ["STORAGE", ...optionalLines];
 
   let qrSizeMm = Math.max(MIN_QR_MM, Math.min(contentWidth * 0.35, contentHeight * 0.6));
-  const roomCodeFontPx = Math.max(20, Math.floor((contentWidth / Math.max(data.roomCode.length, 2)) * 4.2));
-  let shortCodeFontPx = Math.max(MIN_SHORT_CODE_PX, Math.floor(roomCodeFontPx * 0.32));
+  const estimatedRoomCodePx = Math.floor((contentWidth / Math.max(data.roomCode.length, 2)) * 4.2);
+  const maxByHeight = Math.max(24, Math.floor(contentHeight * 0.42));
+  const maxByWidth = Math.max(24, Math.floor(contentWidth * 0.55));
+  const roomCodeFontPx = Math.max(20, Math.min(estimatedRoomCodePx, maxByHeight, maxByWidth, MAX_ROOM_CODE_PX));
+  let shortCodeFontPx = Math.max(MIN_SHORT_CODE_PX, Math.min(30, Math.floor(roomCodeFontPx * 0.32)));
 
   const maxLines = Math.max(0, Math.floor((contentHeight - qrSizeMm - 8) / Math.max(12, shortCodeFontPx)));
   if (optionalLines.length > maxLines) {
@@ -63,6 +67,9 @@ export function computeLabelLayout(size: LabelSizeInput, data: LabelRenderData, 
 
   if (shortCodeFontPx <= MIN_SHORT_CODE_PX) {
     warnings.push("Short code reached minimum font size.");
+  }
+  if (estimatedRoomCodePx > roomCodeFontPx) {
+    warnings.push("Room code font was capped to preserve layout.");
   }
 
   return { roomCodeFontPx, shortCodeFontPx, optionalLines, qrSizeMm, warnings };
