@@ -418,6 +418,38 @@ export function BoxDetailClient({ initialBox }: { initialBox: any }) {
         </div>
       </section>
 
+      {/* Box flags */}
+      <section className="card p-4">
+        <h2 className="font-semibold mb-3">Box Flags</h2>
+        <label
+          className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border w-full transition-colors"
+          style={{
+            background: box.fragile ? "#fef3c7" : "white",
+            borderColor: box.fragile ? "#fde68a" : "var(--border)"
+          }}
+        >
+          <div
+            className="w-10 h-6 rounded-full relative transition-colors flex-shrink-0"
+            style={{ background: box.fragile ? "#f59e0b" : "#e2e8f0" }}
+          >
+            <div
+              className="w-4 h-4 rounded-full bg-white shadow absolute top-1 transition-transform"
+              style={{ transform: box.fragile ? "translateX(20px)" : "translateX(4px)" }}
+            />
+          </div>
+          <input
+            type="checkbox"
+            className="sr-only"
+            checked={Boolean(box.fragile)}
+            onChange={(e) => patchBox({ fragile: e.target.checked })}
+          />
+          <div>
+            <div className="font-medium text-sm">Fragile contents</div>
+            <div className="text-xs text-slate-500">Mark this box to show FRAGILE on labels</div>
+          </div>
+        </label>
+      </section>
+
       {/* Inventory */}
       <section className="card p-4">
         <div className="flex items-center justify-between mb-3">
