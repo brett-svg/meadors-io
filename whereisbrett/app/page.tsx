@@ -2,7 +2,7 @@ import { HistoryBoard } from '@/components/HistoryBoard'
 import { StatsGrid } from '@/components/StatsGrid'
 import { StatusBoard } from '@/components/StatusBoard'
 import { UtcClock } from '@/components/UtcClock'
-import { HOME, SITE_TAGLINE, isPrivateMode } from '@/lib/config'
+import { SITE_TAGLINE, isPrivateMode } from '@/lib/config'
 import { buildPublicStatus } from '@/lib/location'
 import { readState } from '@/lib/storage'
 
@@ -36,16 +36,6 @@ export default async function HomePage() {
         <StatsGrid stats={status.stats} isHome={status.isHome} redacted={status.private} />
         <HistoryBoard history={status.history} now={now} redacted={status.private} />
       </div>
-
-      <footer className="mt-10 space-y-2 border-t border-[color:var(--line)] pt-6 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-[color:var(--muted)]">
-        <p>
-          Known hideout: {HOME.city}, {HOME.region}
-        </p>
-        <p>
-          City-level sightings only. No addresses, no venues — this is a geography game, not a
-          stakeout.
-        </p>
-      </footer>
     </main>
   )
 }

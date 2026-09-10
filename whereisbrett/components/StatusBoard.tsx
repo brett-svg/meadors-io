@@ -76,9 +76,6 @@ function ClassifiedBoard() {
           Brett&apos;s current whereabouts are classified.
         </p>
       </div>
-      <footer className="border-t border-white/10 bg-black/25 px-4 py-3.5 font-mono text-xs uppercase tracking-[0.16em] text-white/50 sm:px-8">
-        Need-to-know only. You do not need to know.
-      </footer>
     </Board>
   )
 }
@@ -104,9 +101,6 @@ function EmptyBoard() {
           No sightings on record. The investigation begins.
         </p>
       </div>
-      <footer className="border-t border-white/10 bg-black/25 px-4 py-3.5 font-mono text-xs uppercase tracking-[0.16em] text-white/50 sm:px-8">
-        Every case starts with no leads.
-      </footer>
     </Board>
   )
 }
