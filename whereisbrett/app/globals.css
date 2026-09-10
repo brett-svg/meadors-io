@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+
+  /* Passport: warm paper, navy ink, a red entry stamp. */
+  --page: #f3ece0;
+  --page-edge: #e6dcc9;
+  --surface: #fbf7ef;
+  --line: #d8cdb8;
+  --text: #171d29;
+  --muted: #5d6575;
+  --accent: #9c2f2f;
+  --accent-soft: rgba(156, 47, 47, 0.1);
+  --board-face: #10141c;
+  --board-text: #ffc44d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Departure board: unlit terminal at 2am. */
+    --page: #07090d;
+    --page-edge: #0d1118;
+    --surface: #11161f;
+    --line: #232c3a;
+    --text: #e8eef7;
+    --muted: #8b98ac;
+    --accent: #ff6b6b;
+    --accent-soft: rgba(255, 107, 107, 0.12);
+    --board-face: #0b0f16;
+    --board-text: #ffc44d;
+  }
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background-color: var(--page);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+/* Faint latitude/longitude graticule, the way a dossier folder has a grid. */
+.graticule {
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.35;
+  mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 78%);
+}
+
+/* Split-flap slat texture for the board panels. */
+.board {
+  background-color: var(--board-face);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.045) 0px,
+    rgba(255, 255, 255, 0.045) 1px,
+    transparent 1px,
+    transparent 22px
+  );
+  color: var(--board-text);
+}
+
+.stamp {
+  color: var(--accent);
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+}
+
+/* Redaction bars for PRIVATE_MODE. */
+.redacted {
+  background: currentColor;
+  border-radius: 2px;
+  opacity: 0.82;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
