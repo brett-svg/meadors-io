@@ -6,6 +6,7 @@ import { relativeTime } from '@/lib/time'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 export const alt = "Brett's current location"
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
@@ -143,6 +144,11 @@ export default async function OpengraphImage() {
         </div>
       </div>
     ),
-    size,
+    {
+      ...size,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+      },
+    },
   )
 }

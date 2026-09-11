@@ -1,3 +1,5 @@
+import { cache } from 'react'
+import type { Metadata } from 'next'
 import { HistoryBoard } from '@/components/HistoryBoard'
 import { StatusBoard } from '@/components/StatusBoard'
 import { isPrivateMode } from '@/lib/config'
@@ -7,9 +9,29 @@ import { readState } from '@/lib/storage'
 // The whole point of the page is that it is current.
 export const dynamic = 'force-dynamic'
 
-export default async function HomePage() {
+const getPageState = cache(async () => {
   const now = Date.now()
   const status = buildPublicStatus(await readState(), { private: isPrivateMode(), now })
+  return { now, status }
+})
+
+/**
+ * Each update gets a distinct image URL. Social clients can therefore cache an
+ * old preview without preventing the next location update from getting a new one.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const { status } = await getPageState()
+  const version = status.current?.lastSeenAt ?? 'initial'
+  const image = `/opengraph-image?v=${encodeURIComponent(version)}`
+
+  return {
+    openGraph: { images: [image] },
+    twitter: { images: [image] },
+  }
+}
+
+export default async function HomePage() {
+  const { now, status } = await getPageState()
 
   return (
     <main className="mx-auto w-full max-w-2xl px-5 pb-16 pt-10 sm:px-6 sm:pt-16">
