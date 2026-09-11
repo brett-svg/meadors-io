@@ -12,9 +12,9 @@ export const HOME: Place = {
 export const MAX_HISTORY = 20
 
 export const SITE_NAME = 'Where Is Brett?'
-export const SITE_TAGLINE = 'A Carmen Sandiego situation.'
+export const SITE_TAGLINE = 'A live location, kept current.'
 export const SITE_DESCRIPTION =
-  'A live, city-level travel status board answering exactly one question: where in the world is Brett right now?'
+  'Brett’s current city, with the latest update time.'
 
 /** True when the site should hide whereabouts from the public. */
 export function isPrivateMode(): boolean {

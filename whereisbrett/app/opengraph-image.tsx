@@ -2,15 +2,19 @@ import { ImageResponse } from 'next/og'
 import { SITE_TAGLINE, isPrivateMode } from '@/lib/config'
 import { buildPublicStatus } from '@/lib/location'
 import { readState } from '@/lib/storage'
+import { relativeTime } from '@/lib/time'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const alt = 'Where in the world is Brett?'
+export const alt = "Brett's current location"
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
-const BOARD = '#0b0f16'
-const AMBER = '#ffc44d'
+const PAGE = '#f5f5f7'
+const SURFACE = '#ffffff'
+const TEXT = '#1d1d1f'
+const MUTED = '#6e6e73'
+const BLUE = '#007aff'
 
 /**
  * The Slack/social preview. It shows the current city, so a link pasted into a
@@ -19,24 +23,22 @@ const AMBER = '#ffc44d'
 export default async function OpengraphImage() {
   const status = buildPublicStatus(await readState(), { private: isPrivateMode() })
 
-  const city = status.private ? 'CLASSIFIED' : (status.current?.city.toUpperCase() ?? 'UNKNOWN')
+  const city = status.private ? 'Location hidden' : (status.current?.city ?? 'No location yet')
   const detail = status.private
-    ? 'Public disclosure suspended'
+    ? 'Check back later.'
     : status.current
-      ? [status.current.region, status.current.country].filter(Boolean).join(' · ')
-      : 'Awaiting first transmission'
+      ? [status.current.region, status.current.country].filter(Boolean).join(', ')
+      : 'Check back soon.'
   const badge = status.private
-    ? 'SEALED'
+    ? 'PRIVATE'
     : !status.hasData
-      ? 'PENDING'
+      ? 'NO UPDATES'
       : status.isHome
-        ? 'AT HOME'
+        ? 'HOME'
         : 'TRAVELING'
-  // Satori ships no emoji font, so the flag emoji used on the page would render
-  // as nothing here. A country-code plate is the passport-stamp equivalent and
-  // needs only the built-in font.
   const plate = status.private ? 'XX' : (status.current?.countryCode ?? '??')
-  const cityFontSize = city.length > 16 ? 68 : city.length > 12 ? 92 : 124
+  const cityFontSize = city.length > 16 ? 72 : city.length > 12 ? 90 : 112
+  const updated = status.current ? `Updated ${relativeTime(status.current.lastSeenAt)}` : SITE_TAGLINE
 
   return new ImageResponse(
     (
@@ -46,68 +48,78 @@ export default async function OpengraphImage() {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
-          background: BOARD,
-          backgroundImage:
-            'repeating-linear-gradient(to bottom, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 2px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 40px)',
-          padding: '64px 72px',
+          justifyContent: 'center',
+          background: PAGE,
+          padding: '64px',
           fontFamily: 'sans-serif',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div
-            style={{
-              fontSize: 28,
-              letterSpacing: 8,
-              color: 'rgba(255,255,255,0.55)',
-              textTransform: 'uppercase',
-            }}
-          >
-            Where in the world is Brett?
+        <div
+          style={{
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            background: SURFACE,
+            borderRadius: 36,
+            padding: '48px 56px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div
+              style={{
+                fontSize: 28,
+                fontWeight: 600,
+                letterSpacing: -0.5,
+                color: TEXT,
+              }}
+            >
+              Where&apos;s Brett?
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                fontSize: 19,
+                fontWeight: 600,
+                letterSpacing: 1,
+                color: BLUE,
+                background: '#e8f2ff',
+                borderRadius: 999,
+                padding: '9px 16px',
+              }}
+            >
+              {badge}
+            </div>
           </div>
-          <div
-            style={{
-              display: 'flex',
-              fontSize: 24,
-              letterSpacing: 6,
-              color: AMBER,
-              border: `2px solid ${AMBER}`,
-              borderRadius: 999,
-              padding: '8px 22px',
-            }}
-          >
-            {badge}
-          </div>
-        </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 36 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 28, marginTop: 74 }}>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 156,
-              height: 156,
+              width: 116,
+              height: 116,
               flexShrink: 0,
               borderRadius: 28,
-              border: `5px solid ${AMBER}`,
-              color: AMBER,
-              fontSize: 68,
-              letterSpacing: 6,
+              background: '#f5f5f7',
+              color: TEXT,
+              fontSize: 42,
+              fontWeight: 600,
+              letterSpacing: 3,
             }}
           >
             {plate}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontSize: cityFontSize, color: AMBER, lineHeight: 1.05 }}>
+            <div
+              style={{ fontSize: cityFontSize, color: TEXT, lineHeight: 1.05, fontWeight: 600 }}
+            >
               {city}
             </div>
             <div
               style={{
-                fontSize: 32,
-                letterSpacing: 5,
-                color: 'rgba(255,255,255,0.6)',
-                textTransform: 'uppercase',
+                fontSize: 28,
+                color: MUTED,
                 marginTop: 14,
               }}
             >
@@ -116,8 +128,18 @@ export default async function OpengraphImage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', fontSize: 30, color: 'rgba(255,255,255,0.85)' }}>
-          {status.private ? SITE_TAGLINE : status.headline}
+        <div
+          style={{
+            display: 'flex',
+            fontSize: 24,
+            color: MUTED,
+            marginTop: 64,
+            paddingTop: 28,
+            borderTop: '2px solid #e5e5ea',
+          }}
+        >
+          {updated}
+          </div>
         </div>
       </div>
     ),

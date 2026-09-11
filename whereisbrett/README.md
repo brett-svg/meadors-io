@@ -1,13 +1,13 @@
 # Where Is Brett?
 
-A playful, single-purpose travel status board that answers one question immediately:
+A simple travel status page that answers one question immediately:
 
-> **WHERE IN THE WORLD IS BRETT?**
-> *A Carmen Sandiego situation.*
+> **Where's Brett?**
+> *A live location, kept current.*
 
-The homepage shows the current city, region, country and flag, whether Brett is home or
-traveling, a human-readable "last updated" time, a short status line, and recent location
-history. An iPhone Shortcut is the only thing that updates it.
+The homepage prioritizes the current city, whether Brett is home or traveling, and a
+human-readable "updated" time. Recent locations appear only when there is history to show.
+An iPhone Shortcut is the only thing that updates it.
 
 **City-level only.** No latitude, longitude, street address, hotel, or venue is ever
 collected, stored, or displayed.

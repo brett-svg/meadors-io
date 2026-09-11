@@ -1,22 +1,8 @@
 import type { Stay, ThreatLevel } from './types'
 
-const HOME_LINES = [
-  'Against all odds, Brett is home.',
-  'Brett has been successfully contained.',
-  'Carmen Sandiego threat level: LOW.',
-  'The trail has gone cold. He is in Spokane.',
-  'All agents stand down. Target is on the couch.',
-]
-
-const AWAY_LINES = [
-  'Brett has escaped again.',
-  'The search continues.',
-  'Yes, he is traveling again.',
-  'Last seen boarding something. Again.',
-  'Sightings confirmed. Containment failed.',
-]
-
-const EMPTY_LINES = ['No sightings on record. The investigation begins.']
+const HOME_LINES = ['Brett is home.']
+const AWAY_LINES = ['Brett is traveling.']
+const EMPTY_LINES = ['No location yet.']
 
 /**
  * Pick a line deterministically from a seed so the server and the client agree

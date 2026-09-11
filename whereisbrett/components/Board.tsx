@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-/** The shared split-flap panel used for the status card and the history list. */
+/** A quiet shared card shell for secondary content. */
 export function Board({
   label,
   right,
@@ -14,14 +14,14 @@ export function Board({
 }) {
   return (
     <section
-      className={`board overflow-hidden rounded-2xl border border-black/40 shadow-[0_18px_50px_-24px_rgba(0,0,0,0.75)] ${className}`}
+      className={`overflow-hidden rounded-[22px] border border-[color:var(--line)] bg-[color:var(--surface)] shadow-[0_12px_32px_-24px_rgba(15,23,42,0.32)] ${className}`}
     >
-      <header className="flex items-center justify-between gap-3 border-b border-white/10 bg-white/[0.04] px-4 py-2.5 sm:px-6">
-        <h2 className="font-mono text-[0.68rem] uppercase tracking-[0.22em] text-white/60 sm:text-xs">
+      <header className="flex items-center justify-between gap-3 px-5 pt-5 sm:px-6 sm:pt-6">
+        <h2 className="text-sm font-medium text-[color:var(--muted)]">
           {label}
         </h2>
         {right ? (
-          <div className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-white/50 sm:text-xs">
+          <div className="text-sm text-[color:var(--muted)]">
             {right}
           </div>
         ) : null}
@@ -31,12 +31,12 @@ export function Board({
   )
 }
 
-/** Amber "live" indicator. Purely decorative. */
+/** Small visual cue that the location is live. */
 export function LiveDot() {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span aria-hidden className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-current" />
-      LIVE
+    <span className="inline-flex items-center gap-2 font-medium text-[color:var(--accent)]">
+      <span aria-hidden className="h-2 w-2 rounded-full bg-current" />
+      Updated
     </span>
   )
 }

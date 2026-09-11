@@ -13,13 +13,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     siteName: SITE_NAME,
-    title: 'WHERE IN THE WORLD IS BRETT?',
+    title: "Where's Brett?",
     description: SITE_TAGLINE,
     url: '/',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'WHERE IN THE WORLD IS BRETT?',
+    title: "Where's Brett?",
     description: SITE_TAGLINE,
   },
   robots: { index: true, follow: true },
@@ -27,18 +27,15 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f3ece0' },
-    { media: '(prefers-color-scheme: dark)', color: '#07090d' },
+    { media: '(prefers-color-scheme: light)', color: '#f5f5f7' },
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
   ],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="relative antialiased">
-        <div aria-hidden className="graticule pointer-events-none fixed inset-0 -z-10" />
-        {children}
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   )
 }

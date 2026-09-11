@@ -169,7 +169,7 @@ test('the empty state renders a sensible first-run payload', () => {
   assert.equal(status.hasData, false)
   assert.equal(status.current, null)
   assert.equal(status.stats, null)
-  assert.equal(status.headline, 'No sightings on record. The investigation begins.')
+  assert.equal(status.headline, 'No location yet.')
 })
 
 test('status copy is stable for a given stay', () => {
