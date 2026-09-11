@@ -37,7 +37,7 @@ collected, stored, or displayed.
 | Language | TypeScript (strict) | |
 | Styling | Tailwind CSS 3 | |
 | Storage | Upstash Redis over its REST API (`fetch`) | One small JSON document; no SDK, no pool, no cold start |
-| Hosting | Vercel | |
+| Hosting | Railway (Docker) or Vercel | |
 | Runtime deps | `next`, `react`, `react-dom`, `zod` | That is the entire list |
 
 All logic lives on the server. The Shortcut sends four strings; the server adds the
@@ -395,6 +395,30 @@ city only refreshes the timestamp.
 
 ## Deployment
 
+### Railway
+
+The app ships with its own `Dockerfile` and `railway.json`, so Railway needs no
+Nixpacks guesswork.
+
+1. In Railway, **New → GitHub Repo**, pick this repo, then in the service settings set
+   **Root Directory** to `whereisbrett`. Railway picks up `whereisbrett/railway.json`
+   and builds from `whereisbrett/Dockerfile`.
+2. Storage — pick one:
+   - **Volume (simplest).** Service → **Volumes** → add one with mount path `/data`.
+     The Dockerfile already sets `LOCAL_STORE_PATH=/data/location.json`, so the file
+     store is durable across redeploys. Keep the service at one replica (the default).
+   - **Upstash Redis.** Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+     (or the `KV_*` pair); the file store is then ignored.
+3. Add variables:
+   - `LOCATION_UPDATE_TOKEN` — output of `openssl rand -base64 32`
+   - `NEXT_PUBLIC_SITE_URL` — `https://whereisbrett.com`. If unset, the app falls back
+     to Railway's `RAILWAY_PUBLIC_DOMAIN`, which is fine until the custom domain is on.
+   - `PRIVATE_MODE` — `false` (or omit)
+4. Deploy. Railway sets `PORT`; the container listens on it.
+5. **Settings → Networking → Custom Domain**, add `whereisbrett.com`, and point DNS at
+   the CNAME Railway gives you. Make sure `NEXT_PUBLIC_SITE_URL` matches.
+6. Update the Shortcut's URL to the real domain and run it once.
+
 ### Vercel
 
 1. Push this repository to GitHub.
@@ -453,7 +477,7 @@ variables. It needs a Node runtime (the API route uses `node:crypto`), not a sta
 - **No third parties.** No analytics, no tracking, no external fonts or images. Flags are
   emoji derived from the country code, so there is no branded artwork of any kind.
 
-To rotate the token: change `LOCATION_UPDATE_TOKEN` in Vercel, redeploy, and update the
+To rotate the token: change `LOCATION_UPDATE_TOKEN` in your host's variables, redeploy, and update the
 `Authorization` header in the Shortcut.
 
 ---

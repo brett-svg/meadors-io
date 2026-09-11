@@ -30,8 +30,11 @@ export function siteUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim()
   if (explicit) return explicit.replace(/\/+$/, '')
 
-  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL
-  if (vercel) return `https://${vercel.replace(/\/+$/, '')}`
+  const platform =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL ||
+    process.env.RAILWAY_PUBLIC_DOMAIN
+  if (platform) return `https://${platform.replace(/\/+$/, '')}`
 
   return `http://localhost:${process.env.PORT ?? 3000}`
 }
